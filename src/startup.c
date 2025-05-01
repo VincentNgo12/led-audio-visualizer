@@ -66,6 +66,7 @@
  
  /* Main application entry point */
  int main(void);
+ extern void SystemInit(void); //SystemInit() from system_stm32f1xx.c
  
  /* Reset handler: program entry after MCU reset */ void reset_handler(void)
  {
@@ -89,6 +90,7 @@
      }
  
      /* Call the application's entry point */
+     SystemInit(); //Invoke SystemInit() to use the system clock configurations in system_stm32f1xx.c
      main();
  }
  

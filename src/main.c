@@ -21,15 +21,15 @@ int main(void)
     while (1)
     {
         GPIOC->ODR ^= (1 << LED_PIN);  // Toggle PC13
-        delay_ms(500);
+        delay_ms(1000);
     }
 }
 
 
 void SysTick_Init(void)
 {
-    // Assuming SystemCoreClock is 16 MHz
-    SysTick->LOAD = 16000 - 1;
+    // The system clock is set to 72MHZ in system_stm32f1xx.c
+    SysTick->LOAD = 72000 - 1;
     SysTick->VAL = 0;                     // Clear current value register
     SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_ENABLE_Msk;  // Enable SysTick, processor clock
 }
