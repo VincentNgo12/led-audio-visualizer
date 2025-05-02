@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include "stm32f1xx.h"
+#include "led_driver.h"
 
 #define LED_PIN 13
 
@@ -17,6 +18,7 @@ int main(void)
     GPIOC->CRH |=  (0x1 << ((LED_PIN - 8) * 4));  // Set MODE13 to Output 10MHz
 
     SysTick_Init(); //Initialize SysTick
+    LED_Init();
 
     while (1)
     {

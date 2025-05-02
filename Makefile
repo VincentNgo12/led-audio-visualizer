@@ -19,8 +19,8 @@ LINKER_FILE = linker_script.ld
 LDFLAGS = -T $(LINKER_FILE)
 
 
-# Source files
-SRC = src/main.c src/startup.c
+# Get all .c files in src/ automatically
+SRC = $(wildcard src/*.c)
 BUILD_DIR = ./build
 
 # Object files will all go into the build/ directory
