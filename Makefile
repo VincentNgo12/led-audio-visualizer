@@ -11,7 +11,8 @@ CFLAGS = -mcpu=cortex-m3 -mthumb -nostdlib -Wall -Werror
 CPPFLAGS = -DSTM32F103xB \
 	-Ivendor/CMSIS/Device/ST/STM32F1/Include \
 	-Ivendor/CMSIS/CMSIS/Core/Include \
-	-Isrc
+	-Isrc \
+	-Iinclude
 
 # Linker file
 LINKER_FILE = linker_script.ld
