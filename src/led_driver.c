@@ -1,4 +1,5 @@
 #include "led_driver.h"
+#include "audio_input.h"
 #include "stm32f1xx.h"
 #include "stdint.h"
 
@@ -17,7 +18,7 @@ void LED_Init(){
     /*Configure TIM3 for PWD Output*/
     TIM3->PSC = TIM3_PRESCALER;  // = 0 (No prescaler)
     TIM3->ARR = TIM3_PERIOD;   // Auto-reload value (ARR = 100 - 1)
-    TIM3->CCR1 = 50;                   // Initial duty cycle (50% since ARR is 100)
+    TIM3->CCR1 = 0;                   // Initial duty cycle
     TIM3->CCMR1 |= TIM_CCMR1_OC1M_1 | TIM_CCMR1_OC1M_2; // PWM Mode (Output high while CNT < CCR1, low otherwise)
     TIM3->CCMR1 |= TIM_CCMR1_OC1PE;   // Enable preload
     TIM3->CCER  |= TIM_CCER_CC1E;     // Enable channel output (TIM3_CH1)
@@ -28,19 +29,18 @@ void LED_Init(){
     This section setup and configure DMA1
     =====================================*/
     RCC->AHBENR  |= RCC_AHBENR_DMA1EN; //Enable DMA1
-    static uint16_t pwm_data[] = {10, 20, 30, 40, 50, 60, 70, 80, 90, 80, 70, 60, 50, 40, 30};  // Example PWM pattern
     DMA1_Channel3->CCR &= ~DMA_CCR_EN;  // Disable Channel 3 before config (CCR is Channel Config Register)
     DMA1_Channel3->CPAR = (uint32_t)&TIM3->CCR1; //CPAR holds address of TIM3_CCR1 (PWD Duty Cycle)
-    DMA1_Channel3->CMAR = (uint32_t)pwm_data; // DMA1 Channel 3 points to pwm_data[] array
-    DMA1_Channel3->CNDTR = sizeof(pwm_data)/sizeof(pwm_data[0]); //Configure number of data element to transfer for channel
+    DMA1_Channel3->CMAR = (uint32_t)adc_buf; // DMA1 Channel 3 points to adc_buf[] array
+    DMA1_Channel3->CNDTR = ADC_BUF_LEN; //Configure number of data element to transfer for channel
 
-    /*Configure DMA1 Channel 3 Behaviour:
-    -Direction Memory to Peripheral
-    -Memory address increment
-    -Circular Mode (restart from array begin when done)
-    -Peripheral Data size = 16 bit
-    -Memoruy Data size = 16 bit*/
-    DMA1_Channel3->CCR = DMA_CCR_DIR | DMA_CCR_MINC | DMA_CCR_CIRC | DMA_CCR_PSIZE_0 | DMA_CCR_MSIZE_0;
+
+
+    DMA1_Channel3->CCR = DMA_CCR_DIR       //Direction memory to Peripheral
+                        |DMA_CCR_MINC      //Memory Increment
+                        |DMA_CCR_CIRC      //Circlar Mode
+                        |DMA_CCR_PSIZE_0   //Peripheral data size = 16 bit
+                        |DMA_CCR_MSIZE_0;  //Memory data size = 16 bit
 
     TIM3->DIER |= TIM_DIER_UDE; // Enable DMA for TIM3 update events (Update PWD Duty via DMA when CNT reaches ARR)
 

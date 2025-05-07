@@ -7,7 +7,7 @@ PROGRAM = led_audio_visualizer
 
 # Compiler and flags
 CC = arm-none-eabi-gcc
-CFLAGS = -mcpu=cortex-m3 -mthumb -nostdlib -Wall -Werror
+CFLAGS = -mcpu=cortex-m3 -mthumb -nostdlib -Wall -Werror -g
 CPPFLAGS = -DSTM32F103xB \
 	-Ivendor/CMSIS/Device/ST/STM32F1/Include \
 	-Ivendor/CMSIS/CMSIS/Core/Include \
@@ -59,3 +59,18 @@ PROGRAMMER_FLAGS=-f /usr/share/openocd/scripts/interface/stlink-v2.cfg -f /usr/s
 
 flash: $(PROGRAM).elf
 	$(PROGRAMMER) $(PROGRAMMER_FLAGS) -c "program $(PROGRAM).elf verify reset exit"
+
+
+
+
+# -----------------------------------------------------------------------------
+# Debug Rules
+# -----------------------------------------------------------------------------
+.PHONY: debug
+debug: all
+	@echo "Starting OpenOCD..."
+	openocd -f /usr/share/openocd/scripts/interface/stlink-v2.cfg -f /usr/share/openocd/scripts/target/stm32f1x.cfg & \
+	PID=$$!; \
+	sleep 2; \
+	gdb-multiarch -ex "target extended-remote :3333" -ex "monitor reset halt" $(PROGRAM).elf; \
+	kill $$PID

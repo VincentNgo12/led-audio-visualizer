@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include "stm32f1xx.h"
 #include "led_driver.h"
+#include "audio_input.h"
 
 #define LED_PIN 13
 
@@ -19,6 +20,7 @@ int main(void)
 
     SysTick_Init(); //Initialize SysTick
     LED_Init();
+    ADC1_Init();
 
     while (1)
     {
