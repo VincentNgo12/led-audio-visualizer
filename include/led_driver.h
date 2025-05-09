@@ -8,7 +8,7 @@ void LED_Init(void);
 
 // Constants
 #define LED_PWM_FREQ_HZ     720000u  // 720 kHz (for ARR = 100, PSC = 0, 72MHz clock)
-#define LED_PWM_RESOLUTION  4095u     // ARR value (100 steps)
+#define LED_PWM_RESOLUTION  2047u     // ARR value (100 steps)
 
 // PWM Configuration Macros
 #define TIM3_PRESCALER      0u  // No prescaling

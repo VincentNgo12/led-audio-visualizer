@@ -18,7 +18,7 @@ void LED_Init(){
     /*Configure TIM3 for PWD Output*/
     TIM3->PSC = TIM3_PRESCALER;  // = 0 (No prescaler)
     TIM3->ARR = TIM3_PERIOD;   // Auto-reload value (ARR = 100 - 1)
-    TIM3->CCR1 = 0;                   // Initial duty cycle
+    TIM3->CCR1 = 50;                   // Initial duty cycle
     TIM3->CCMR1 |= TIM_CCMR1_OC1M_1 | TIM_CCMR1_OC1M_2; // PWM Mode (Output high while CNT < CCR1, low otherwise)
     TIM3->CCMR1 |= TIM_CCMR1_OC1PE;   // Enable preload
     TIM3->CCER  |= TIM_CCER_CC1E;     // Enable channel output (TIM3_CH1)
@@ -44,7 +44,7 @@ void LED_Init(){
 
     TIM3->DIER |= TIM_DIER_UDE; // Enable DMA for TIM3 update events (Update PWD Duty via DMA when CNT reaches ARR)
 
-    DMA1_Channel3->CCR |= DMA_CCR_EN; //Start DMA1 Channel 3
+    //DMA1_Channel3->CCR |= DMA_CCR_EN; //Start DMA1 Channel 3
     TIM3->CR1 |= TIM_CR1_CEN; //Start TIM3_CH1
 
 }

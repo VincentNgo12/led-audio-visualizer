@@ -21,3 +21,16 @@
 -Used ADC1 conversion as TIM3_CCR1 PWM Cycle
 -Add debug rules to Makefile
 -Find out the LED lights up after ADC1_Init() even ADC1 value is 0 (will work on this bug tomorrow)
+
+
+### Day 5
+-Fixed Makefile for debug mode
+-Spent a lot of time with GDB debbuger to fix the bug today.
+-Spent hours to debug the DMA1 Channel 1 bug. Turns out it was the ADC1 after. It's the damn trick to turn the ADC1 on twice after configuration.
+-Today has nothing done except debugging.
+-Got the ADC and DMA to work but find out that DMA interupt is not working.
+-Spent more time debugging.
+-Propbably because the isr_vector defined in startup.c is insufficient
+-Defined a whole bunch more interupt handlers in startup.c
+-It's working now, turns out the DMA1 interupt handler was also part of the big bug today.
+-Proud of myself.

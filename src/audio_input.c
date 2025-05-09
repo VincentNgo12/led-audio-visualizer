@@ -19,14 +19,13 @@ void ADC1_Init(){
     // Set ADC prescaler:(must be ≤ 14 MHz)
     RCC->CFGR |= RCC_CFGR_ADCPRE_DIV6; //(72MHz / 6 = 12MHz)
 
-    // Calibrate ADC
-    ADC1->CR2 |= ADC_CR2_RSTCAL;
-    while (ADC1->CR2 & ADC_CR2_RSTCAL);
-
     // Power on ADC
-    ADC1->CR2 |= ADC_CR2_ADON; //Enable ADC
-    for (volatile int i = 0; i < 1000; i++);  // Short delay
-    ADC1->CR2 |= ADC_CR2_ADON; //Start calibration (second write)
+    ADC1->CR2 |= ADC_CR2_ADON;  // Power on ADC
+    //for (volatile uint32_t i = 0; i < 1000; i++);  // Small Delay (1ms)
+
+    // Calibrate ADC
+    ADC1->CR2 |= ADC_CR2_CAL;       // Start calibration
+    while (ADC1->CR2 & ADC_CR2_CAL); // Wait
 
     // Configure ADC
     ADC1->SMPR2 |= ADC_SMPR2_SMP0;  // Max sampling time for Ch0 (71.5 cycles)
@@ -35,6 +34,9 @@ void ADC1_Init(){
 
     ADC1->CR2 |= ADC_CR2_CONT;      // Continuous mode
     ADC1->CR2 |= ADC_CR2_DMA;       // Request DMA on each conversion
+
+    // Important trick: toggle ADON again before starting
+    ADC1->CR2 |= ADC_CR2_ADON;
     ADC1->CR2 |= ADC_CR2_SWSTART;   // Start conversion
 
 
@@ -47,6 +49,7 @@ void ADC1_Init(){
     ====================================*/
     // Enable DMA1 clock
     RCC->AHBENR |= RCC_AHBENR_DMA1EN;
+    DMA1_Channel1->CCR &= ~DMA_CCR_EN;  // Disable Channel 1 before config (CCR is Channel Config Register)
 
     // Configure DMA1 Channel1
     DMA1_Channel1->CPAR = (uint32_t)&ADC1->DR;         // Peripheral address (ADC1 conversions)
@@ -61,7 +64,12 @@ void ADC1_Init(){
         | DMA_CCR_TCIE       // Transfer complete interrupt enable
         | DMA_CCR_EN;        // Enable DMA channel
 
+    DMA1_Channel1->CCR &= ~DMA_CCR_DIR;  // DIR=0: Peripheral→Memory (ADC1->DR → adc_buf)
+
+    DMA1_Channel1->CCR |= DMA_CCR_EN; //Start DMA1 Channel 1    
+
     // Enable interrupt in NVIC
+    DMA1->IFCR |= DMA_IFCR_CTCIF1 | DMA_IFCR_CHTIF1 | DMA_IFCR_CTEIF1; //Clear DMA flag before enable IRQ
     NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 }
 
@@ -84,6 +92,16 @@ void DMA1_Channel1_IRQHandler()
         DMA1->IFCR |= DMA_IFCR_CTCIF1;  // Clear interrupt flag
 
         // Optionally process data in adc_buf here
+        uint32_t sum = 0;
+        for (int i = 0; i < ADC_BUF_LEN; i++) {
+            sum += adc_buf[i];
+        }
+        uint16_t avg = sum / ADC_BUF_LEN;
+
+        int32_t diff = avg - 2047;
+        if (diff < 0) diff = 0;
+
+        TIM3->CCR1 = (uint16_t)diff;  // Set PWM duty cycle
     }
 }
 

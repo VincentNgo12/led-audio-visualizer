@@ -2,17 +2,23 @@
 # Makefile for STM32F103 baremetal project
 # -----------------------------------------------------------------------------
 
+DEBUG ?= 0  # Default to not debug mode
+
 # Project name (no extension)
 PROGRAM = led_audio_visualizer
 
 # Compiler and flags
 CC = arm-none-eabi-gcc
-CFLAGS = -mcpu=cortex-m3 -mthumb -nostdlib -Wall -Werror -g
+CFLAGS = -mcpu=cortex-m3 -mthumb -nostdlib -Wall -Werror
 CPPFLAGS = -DSTM32F103xB \
 	-Ivendor/CMSIS/Device/ST/STM32F1/Include \
 	-Ivendor/CMSIS/CMSIS/Core/Include \
 	-Isrc \
 	-Iinclude
+
+ifeq ($(DEBUG),1)
+  CFLAGS += -g3 -Og -fno-inline # Add debug flags if in debug mode
+endif
 
 # Linker file
 LINKER_FILE = linker_script.ld
@@ -49,6 +55,7 @@ $(BUILD_DIR)/system_stm32f1xx.o: ./vendor/CMSIS/Device/ST/STM32F1/Source/Templat
 # Cleaning
 # -----------------------------------------------------------------------------
 .PHONY: clean
+
 clean:
 	rm -f $(BUILD_DIR)/*.o *.elf
 # -----------------------------------------------------------------------------
@@ -61,16 +68,22 @@ flash: $(PROGRAM).elf
 	$(PROGRAMMER) $(PROGRAMMER_FLAGS) -c "program $(PROGRAM).elf verify reset exit"
 
 
-
-
 # -----------------------------------------------------------------------------
 # Debug Rules
 # -----------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
+# Debug Mode
+# -----------------------------------------------------------------------------
+$(PROGRAM)-debug.elf: $(OBJ) $(BUILD_DIR)/system_stm32f1xx.o
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -g3 -Og $^ -o $(PROGRAM)-debug.elf
+
 .PHONY: debug
-debug: all
+debug:
+	$(MAKE) DEBUG=1 $(PROGRAM)-debug.elf 
 	@echo "Starting OpenOCD..."
 	openocd -f /usr/share/openocd/scripts/interface/stlink-v2.cfg -f /usr/share/openocd/scripts/target/stm32f1x.cfg & \
 	PID=$$!; \
-	sleep 2; \
-	gdb-multiarch -ex "target extended-remote :3333" -ex "monitor reset halt" $(PROGRAM).elf; \
+	sleep 1; \
+	gdb-multiarch -ex "target extended-remote :3333" -ex "monitor reset halt" $(PROGRAM)-debug.elf; \
 	kill $$PID
