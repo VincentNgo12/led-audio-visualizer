@@ -1,4 +1,5 @@
 #include "audio_input.h"
+#include "led_driver.h"
 #include "stm32f1xx.h"
 #include "stdint.h"
 
@@ -98,7 +99,7 @@ void DMA1_Channel1_IRQHandler()
         }
         uint16_t avg = sum / ADC_BUF_LEN;
 
-        int32_t diff = avg - 2047;
+        int32_t diff = avg - ADC_OFFSET;
         if (diff < 0) diff = 0;
 
         TIM3->CCR1 = (uint16_t)diff;  // Set PWM duty cycle

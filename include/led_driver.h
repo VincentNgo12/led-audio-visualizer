@@ -5,6 +5,16 @@
 
 // Function prototypes
 void LED_Init(void);
+void Update_Led_Colors(uint16_t volume); //Update led_colors given volume
+void Encode_Led_Data();
+
+
+/*================================================
+                LED Strip Info
+================================================*/
+#define NUM_LEDS 30 //Number of LEDs on strip
+extern uint8_t led_colors[NUM_LEDS][3]; //RGB values for each LED
+
 
 // Constants
 #define LED_PWM_FREQ_HZ     720000u  // 720 kHz (for ARR = 100, PSC = 0, 72MHz clock)
@@ -14,5 +24,12 @@ void LED_Init(void);
 #define TIM3_PRESCALER      0u  // No prescaling
 #define TIM3_PERIOD         (LED_PWM_RESOLUTION - 1)  // ARR = 99
 
+// PWM Controls 
+#define WS_HIGH  65  // Logic 1 = ~0.8us high
+#define WS_LOW   26  // Logic 0 = ~0.4us high
+#define BITS_PER_LED 24
+#define PWM_BITS (NUM_LEDS * BITS_PER_LED)
+
+uint16_t pwm_buf[PWM_BITS]; // TIM3->CCR1 values to control PWM
 
 #endif // LED_DRIVER_H

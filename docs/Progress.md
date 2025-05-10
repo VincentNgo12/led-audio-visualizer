@@ -34,3 +34,7 @@
 -Defined a whole bunch more interupt handlers in startup.c
 -It's working now, turns out the DMA1 interupt handler was also part of the big bug today.
 -Proud of myself.
+
+
+### Day 6
+-

@@ -4,7 +4,11 @@
 #include "stdint.h"
 
 
-//Code to initialize LED (Setup PWM with TIM3 and DMA)
+uint8_t led_colors[NUM_LEDS][3]; // RGB for each LED
+
+/*======================================================
+  Code to initialize LED (Setup PWM with TIM3 and DMA)
+======================================================*/
 void LED_Init(){
     /*===================================
     This section setup and configure TIM3
@@ -47,4 +51,24 @@ void LED_Init(){
     //DMA1_Channel3->CCR |= DMA_CCR_EN; //Start DMA1 Channel 3
     TIM3->CR1 |= TIM_CR1_CEN; //Start TIM3_CH1
 
+}
+
+
+/*====================================
+    Code to control the LED Strip
+====================================*/
+
+//Update led_colors given volume
+void Update_Led_Colors(uint16_t volume) {
+    for (int i = 0; i < NUM_LEDS; i++) {
+        if (i < volume * NUM_LEDS / 4095) {
+            led_colors[i][0] = 0x00; // Red
+            led_colors[i][1] = 0xFF; // Green
+            led_colors[i][2] = 0x00; // Blue
+        } else {
+            led_colors[i][0] = 0;
+            led_colors[i][1] = 0;
+            led_colors[i][2] = 0;
+        }
+    }
 }
