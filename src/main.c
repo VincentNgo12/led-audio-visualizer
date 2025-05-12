@@ -27,6 +27,12 @@ int main(void)
     {
         GPIOC->ODR ^= (1 << LED_PIN);  // Toggle PC13
         delay_ms(1000);
+
+        //Process ADC1 Data if DMA1 interupt flag is raised
+        if(dma1_channel1_done){
+            dma1_channel1_done = 0;
+            ADC_Buf_Process();
+        }
     }
 }
 

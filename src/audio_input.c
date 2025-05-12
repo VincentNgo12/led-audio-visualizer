@@ -4,6 +4,7 @@
 #include "stdint.h"
 
 volatile uint16_t adc_buf[ADC_BUF_LEN] __attribute__((aligned(4)));
+volatile int dma1_channel1_done = 0; //DMA1 Channel1 Interupt Flag
 
 void ADC1_Init(){
     /*====================================
@@ -74,7 +75,9 @@ void ADC1_Init(){
     NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 }
 
-
+/*=======================
+  ADC1 Input Processings
+========================*/
 //Get ADC1 Input
 uint16_t ADC1_Read()
 {
@@ -82,6 +85,23 @@ uint16_t ADC1_Read()
     return ADC1->DR;
 }
 
+uint16_t abs2(int x) {
+    return (x < 0) ? -x : x;
+}
+
+//Process ADC1 Input
+void ADC_Buf_Process(){
+    uint32_t sum = 0;
+    for (int i = 0; i < ADC_BUF_LEN; i++) {
+        sum += adc_buf[i];
+    }
+    uint16_t avg = sum / ADC_BUF_LEN;
+
+    uint16_t volume = abs2(avg - ADC_OFFSET);
+    Update_Led_Colors(volume);
+    Encode_Led_Data();
+    // TIM3->CCR1 = volume;
+}
 
 
 /*====================================
@@ -93,16 +113,7 @@ void DMA1_Channel1_IRQHandler()
         DMA1->IFCR |= DMA_IFCR_CTCIF1;  // Clear interrupt flag
 
         // Optionally process data in adc_buf here
-        uint32_t sum = 0;
-        for (int i = 0; i < ADC_BUF_LEN; i++) {
-            sum += adc_buf[i];
-        }
-        uint16_t avg = sum / ADC_BUF_LEN;
-
-        int32_t diff = avg - ADC_OFFSET;
-        if (diff < 0) diff = 0;
-
-        TIM3->CCR1 = (uint16_t)diff;  // Set PWM duty cycle
+        dma1_channel1_done = 1;
     }
 }
 

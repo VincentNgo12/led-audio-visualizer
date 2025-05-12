@@ -5,6 +5,7 @@
 
 
 uint8_t led_colors[NUM_LEDS][3]; // RGB for each LED
+uint16_t pwm_buf[PWM_BITS]; // TIM3->CCR1 values to control PWM
 
 /*======================================================
   Code to initialize LED (Setup PWM with TIM3 and DMA)
@@ -35,8 +36,8 @@ void LED_Init(){
     RCC->AHBENR  |= RCC_AHBENR_DMA1EN; //Enable DMA1
     DMA1_Channel3->CCR &= ~DMA_CCR_EN;  // Disable Channel 3 before config (CCR is Channel Config Register)
     DMA1_Channel3->CPAR = (uint32_t)&TIM3->CCR1; //CPAR holds address of TIM3_CCR1 (PWD Duty Cycle)
-    DMA1_Channel3->CMAR = (uint32_t)adc_buf; // DMA1 Channel 3 points to adc_buf[] array
-    DMA1_Channel3->CNDTR = ADC_BUF_LEN; //Configure number of data element to transfer for channel
+    DMA1_Channel3->CMAR = (uint32_t)pwm_buf; // DMA1 Channel 3 points to pwd_buf[] array
+    DMA1_Channel3->CNDTR = PWM_BITS; //Configure number of data element to transfer for channel (length of pwm_buf)
 
 
 
@@ -48,7 +49,7 @@ void LED_Init(){
 
     TIM3->DIER |= TIM_DIER_UDE; // Enable DMA for TIM3 update events (Update PWD Duty via DMA when CNT reaches ARR)
 
-    //DMA1_Channel3->CCR |= DMA_CCR_EN; //Start DMA1 Channel 3
+    DMA1_Channel3->CCR |= DMA_CCR_EN; //Start DMA1 Channel 3
     TIM3->CR1 |= TIM_CR1_CEN; //Start TIM3_CH1
 
 }
@@ -61,14 +62,34 @@ void LED_Init(){
 //Update led_colors given volume
 void Update_Led_Colors(uint16_t volume) {
     for (int i = 0; i < NUM_LEDS; i++) {
-        if (i < volume * NUM_LEDS / 4095) {
+        if (i < volume * NUM_LEDS / ADC_OFFSET) {
             led_colors[i][0] = 0x00; // Red
-            led_colors[i][1] = 0xFF; // Green
-            led_colors[i][2] = 0x00; // Blue
+            led_colors[i][1] = 0x00; // Green
+            led_colors[i][2] = 0xFF; // Blue
         } else {
             led_colors[i][0] = 0;
             led_colors[i][1] = 0;
             led_colors[i][2] = 0;
+        }
+    }
+}
+
+
+
+//Encode led_colors data into pwm_buf array (Which will be used to drive TIM3 PWM)
+void Encode_Led_Data() {
+    int bit_idx = 0;
+    for (int i = 0; i < NUM_LEDS; i++) {
+        for (int color = 0; color < 3; color++) {
+            uint8_t byte = led_colors[i][color]; //Get a color byte from one color channel
+            for (int bit = 7; bit >= 0; bit--) {
+                //Encode each bits data into pwd_buf
+                if (byte & (1 << bit)) {
+                    pwm_buf[bit_idx++] = WS_HIGH;
+                } else {
+                    pwm_buf[bit_idx++] = WS_LOW;
+                }
+            }
         }
     }
 }

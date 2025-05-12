@@ -17,12 +17,12 @@ extern uint8_t led_colors[NUM_LEDS][3]; //RGB values for each LED
 
 
 // Constants
-#define LED_PWM_FREQ_HZ     720000u  // 720 kHz (for ARR = 100, PSC = 0, 72MHz clock)
-#define LED_PWM_RESOLUTION  2047u     // ARR value (100 steps)
+#define LED_PWM_FREQ_HZ     800000u // 800 kHz (1.25 microsec for each bits, ARR = 89, PSC = 0, 72MHz system clock)
+#define LED_PWM_RESOLUTION  90u // ARR value (90 steps)
 
 // PWM Configuration Macros
 #define TIM3_PRESCALER      0u  // No prescaling
-#define TIM3_PERIOD         (LED_PWM_RESOLUTION - 1)  // ARR = 99
+#define TIM3_PERIOD         (LED_PWM_RESOLUTION - 1)  // ARR = 89
 
 // PWM Controls 
 #define WS_HIGH  65  // Logic 1 = ~0.8us high

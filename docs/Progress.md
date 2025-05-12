@@ -37,4 +37,6 @@
 
 
 ### Day 6
--
+-Did nothing today really.
+-Finished setting up the LED strip interface with PWM but doubted its going to work.
+-It didn't work, don't even know where to start debugging.
