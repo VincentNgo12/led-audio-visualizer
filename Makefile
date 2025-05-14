@@ -10,9 +10,12 @@ PROGRAM = led_audio_visualizer
 # Compiler and flags
 CC = arm-none-eabi-gcc
 CFLAGS = -mcpu=cortex-m3 -mthumb -nostdlib -Wall -Werror
+CFLAGS += -DARM_MATH_CM3 #-Ofast -ffast-math #Additional flags for CMSIS-DSP 
 CPPFLAGS = -DSTM32F103xB \
 	-Ivendor/CMSIS/Device/ST/STM32F1/Include \
 	-Ivendor/CMSIS/CMSIS/Core/Include \
+	-Ivendor/CMSIS/CMSIS/DSP/Include \
+	-Ivendor/CMSIS/CMSIS/DSP/PrivateInclude \
 	-Isrc \
 	-Iinclude
 
@@ -27,10 +30,24 @@ LDFLAGS = -T $(LINKER_FILE)
 
 # Get all .c files in src/ automatically
 SRC = $(wildcard src/*.c)
+
+#Path to CMSIS-DSP
+CMSIS-DSP = ./vendor/CMSIS/CMSIS/DSP
+#Additional CMSIS Source Files
+SRC += ./vendor/CMSIS/Device/ST/STM32F1/Source/Templates/system_stm32f1xx.c \
+		$(CMSIS-DSP)/Source/TransformFunctions/arm_cfft_radix4_q15.c \
+		$(CMSIS-DSP)/Source/TransformFunctions/arm_cmplx_mag_q15.c \
+		$(CMSIS-DSP)/Source/CommonTables/arm_common_tables.c \
+		$(CMSIS-DSP)/Source/CommonTables/arm_const_structs.c \
+		$(CMSIS-DSP)/Source/BasicMathFunctions/arm_abs_q15.c \
+		$(CMSIS-DSP)/Source/BasicMathFunctions/arm_shift_q15.c
+
 BUILD_DIR = ./build
 
 # Object files will all go into the build/ directory
 OBJ = $(addprefix $(BUILD_DIR)/, $(notdir $(SRC:.c=.o)))
+
+vpath %.c $(sort $(dir $(SRC))) #Find Source Files across Directories
 
 
 # -----------------------------------------------------------------------------
@@ -39,17 +56,12 @@ OBJ = $(addprefix $(BUILD_DIR)/, $(notdir $(SRC:.c=.o)))
 all: $(PROGRAM).elf
 
 # Link object files into final ELF
-$(PROGRAM).elf: $(OBJ) $(BUILD_DIR)/system_stm32f1xx.o
+$(PROGRAM).elf: $(OBJ)
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $^ -o $(PROGRAM).elf
 
 #Compile each C files into obj file (inside build folder).
-$(BUILD_DIR)/%.o: src/%.c
+$(BUILD_DIR)/%.o: %.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
-
-#Compile system_stm32f1xx file independently
-$(BUILD_DIR)/system_stm32f1xx.o: ./vendor/CMSIS/Device/ST/STM32F1/Source/Templates/system_stm32f1xx.c 
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
-
 
 # -----------------------------------------------------------------------------
 # Cleaning

@@ -58,4 +58,8 @@
 -Turns out the reason the LED was unresponsive and lagging because I have a massive 1 second delay in the main loop
 ***TODO: Implement Double ADC Buffer
 -Implemented Double ADC Buffer with DMA1 half and full interupt
+-I now have a very responsive LED strip
+-Tried to install CMSIS-DSP library, have problems with Makefile build rules again.
+-Will try to fix the Makefile to include and compile CMSIS-DSP library tomorrow.
+***TODO: Fix Makefile to install CMSIS-DSP
 ***TODO: Implement FFT with CMSIS-DSP
