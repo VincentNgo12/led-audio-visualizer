@@ -4,7 +4,8 @@
 #include "stdint.h"
 
 volatile uint16_t adc_buf[ADC_BUF_LEN] __attribute__((aligned(4)));
-volatile int dma1_channel1_done = 0; //DMA1 Channel1 Interupt Flag
+volatile bool adc_buf_half_ready = false; //adc_buf[] half Interupt Flag
+volatile bool adc_buf_full_ready = false; //adc_buf[] full Interupt Flag
 
 void ADC1_Init(){
     /*====================================
@@ -72,6 +73,9 @@ void ADC1_Init(){
 
     // Enable interrupt in NVIC
     DMA1->IFCR |= DMA_IFCR_CTCIF1 | DMA_IFCR_CHTIF1 | DMA_IFCR_CTEIF1; //Clear DMA flag before enable IRQ
+    //These two interupts below are used to implement double buffer for adc_buf[]
+    DMA1_Channel1->CCR |= DMA_CCR_TCIE;  // Transfer Complete Interrupt
+    DMA1_Channel1->CCR |= DMA_CCR_HTIE;  // Half Transfer Interrupt
     NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 }
 
@@ -90,31 +94,35 @@ uint16_t abs2(int x) {
 }
 
 //Process ADC1 Input
-void ADC_Buf_Process(){
+void ADC_Buf_Process(uint8_t half){
     uint32_t sum = 0;
-    for (int i = 0; i < ADC_BUF_LEN; i++) {
-        sum += adc_buf[i];
-    }
-    uint16_t avg = sum / ADC_BUF_LEN;
+    volatile uint16_t* buf_ptr = (half == 0) ? &adc_buf[0] : &adc_buf[ADC_BUF_LEN / 2];
 
+    for (int i = 0; i < ADC_BUF_LEN / 2; i++) {
+        sum += buf_ptr[i];
+    }
+
+    uint16_t avg = sum / (ADC_BUF_LEN / 2);
     uint16_t volume = abs2(avg - ADC_OFFSET);
+
     Update_Led_Colors(volume);
     Encode_Led_Data();
-    // TIM3->CCR1 = volume;
 }
 
 
 /*====================================
-    DMA1 Interupt Handler
+    DMA1 Channel 1 Interupt Handler
   ====================================*/
 void DMA1_Channel1_IRQHandler()
 {
-    if (DMA1->ISR & DMA_ISR_TCIF1) {
-        DMA1->IFCR |= DMA_IFCR_CTCIF1;  // Clear interrupt flag
+    if (DMA1->ISR & DMA_ISR_HTIF1) {
+        DMA1->IFCR |= DMA_IFCR_CHTIF1;  // Clear half transfer flag
+        adc_buf_half_ready = true; //Signal main loop
+    }
 
-        // Optionally process data in adc_buf here
-        dma1_channel1_done = 1;
+    if (DMA1->ISR & DMA_ISR_TCIF1) {
+        DMA1->IFCR |= DMA_IFCR_CTCIF1;  // Clear transfer complete flag
+        adc_buf_full_ready = true; //Signal main loop
     }
 }
-
 

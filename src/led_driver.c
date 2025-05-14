@@ -7,6 +7,8 @@
 uint8_t led_colors[NUM_LEDS][3]; // RGB for each LED
 uint16_t pwm_buf[PWM_BITS]; // TIM3->CCR1 values to control PWM
 
+volatile bool pwm_ready = false; // DMA1 Channel 3 Interupt flag
+
 /*======================================================
   Code to initialize LED (Setup PWM with TIM3 and DMA)
 ======================================================*/
@@ -48,10 +50,27 @@ void LED_Init(){
                         |DMA_CCR_MSIZE_0;  //Memory data size = 16 bit
 
     TIM3->DIER |= TIM_DIER_UDE; // Enable DMA for TIM3 update events (Update PWD Duty via DMA when CNT reaches ARR)
+    DMA1_Channel3->CCR |= DMA_CCR_TCIE;  // Enable Transfer Complete Interrupt
 
     DMA1_Channel3->CCR |= DMA_CCR_EN; //Start DMA1 Channel 3
     TIM3->CR1 |= TIM_CR1_CEN; //Start TIM3_CH1
 
+    // Enable interrupt in NVIC
+    DMA1->IFCR |= DMA_IFCR_CTCIF3 | DMA_IFCR_CHTIF3 | DMA_IFCR_CTEIF3; //Clear DMA flag before enable IRQ
+    NVIC_EnableIRQ(DMA1_Channel3_IRQn);
+}
+
+
+/*====================================
+    DMA1 Channel 3 Interupt Handler
+  ====================================*/
+void DMA1_Channel3_IRQHandler()
+{
+    if (DMA1->ISR & DMA_ISR_TCIF3) {
+        DMA1->IFCR |= DMA_IFCR_CTCIF3;  // Clear interrupt flag
+
+        pwm_ready = true; //Signal main loop (PWM Data transfer is completed)
+    }
 }
 
 
@@ -63,13 +82,13 @@ void LED_Init(){
 void Update_Led_Colors(uint16_t volume) {
     for (int i = 0; i < NUM_LEDS; i++) {
         if (i < volume * NUM_LEDS / ADC_OFFSET) {
-            led_colors[i][0] = 0x00; // Red
-            led_colors[i][1] = 0x00; // Green
-            led_colors[i][2] = 0xFF; // Blue
+            led_colors[i][0] = 0x00; // Green
+            led_colors[i][1] = 0xFF; // Red
+            led_colors[i][2] = 0x00; // Blue
         } else {
-            led_colors[i][0] = 0;
-            led_colors[i][1] = 0;
-            led_colors[i][2] = 0;
+            led_colors[i][0] = 0x00; // Green
+            led_colors[i][1] = 0x00; // Red
+            led_colors[i][2] = 0xFF; // Blue
         }
     }
 }
@@ -91,5 +110,10 @@ void Encode_Led_Data() {
                 }
             }
         }
+    }
+
+    // Append reset pulse (PWM flat LOW for > 50us)
+    for (int i = 0; i < RESET_SLOTS; i++) {
+        pwm_buf[bit_idx++] = 0;
     }
 }

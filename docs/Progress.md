@@ -40,3 +40,22 @@
 -Did nothing today really.
 -Finished setting up the LED strip interface with PWM but doubted its going to work.
 -It didn't work, don't even know where to start debugging.
+-After playing around with the electronic testing devices, I found out that my PMW signal is working just fine.
+-The power source seems to deliver 5.1V too.
+-But the LED strip is still off.
+-Later I found out that it was because I didn't implement the reset pulse, that's why the led strip didn't latch on to new data.
+-I was so happy that it worked.
+-TODO: Implement reset pulse
+
+
+### Day 7
+-Implemented the Reset Pulse for the LED Strip
+-Should be transfering LED data okay now.
+-The response suffer massive delay and lags, unpredictable really, gotta fix that.
+-The color data is ordered as GRB...
+-I forgot to check if the DMA trasnfer from pwm_buf to TIM3->CCR1 is completed before trasnfer LED data.
+-FIxed that with DMA1 Channel 3 interupt flag
+-Turns out the reason the LED was unresponsive and lagging because I have a massive 1 second delay in the main loop
+***TODO: Implement Double ADC Buffer
+-Implemented Double ADC Buffer with DMA1 half and full interupt
+***TODO: Implement FFT with CMSIS-DSP

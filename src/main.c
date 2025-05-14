@@ -25,13 +25,20 @@ int main(void)
 
     while (1)
     {
-        GPIOC->ODR ^= (1 << LED_PIN);  // Toggle PC13
-        delay_ms(1000);
+        //GPIOC->ODR ^= (1 << LED_PIN);  // Toggle PC13
+        //delay_ms(1000);
 
-        //Process ADC1 Data if DMA1 interupt flag is raised
-        if(dma1_channel1_done){
-            dma1_channel1_done = 0;
-            ADC_Buf_Process();
+        //Process ADC1 Data if interupt flags are raised
+        if (adc_buf_half_ready && pwm_ready) {
+            adc_buf_half_ready = false;
+            pwm_ready = false;
+            ADC_Buf_Process(0);  // First half
+        }
+
+        if (adc_buf_full_ready && pwm_ready) {
+            adc_buf_full_ready = false;
+            pwm_ready = false;
+            ADC_Buf_Process(1);  // Second half
         }
     }
 }
