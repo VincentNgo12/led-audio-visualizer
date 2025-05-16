@@ -9,7 +9,7 @@ PROGRAM = led_audio_visualizer
 
 # Compiler and flags
 CC = arm-none-eabi-gcc
-CFLAGS = -mcpu=cortex-m3 -mthumb -nostdlib -Wall -Werror
+CFLAGS = -mcpu=cortex-m3 -mthumb -nostdlib -Wall -Werror -Os -flto
 CFLAGS += -DARM_MATH_CM3 #-Ofast -ffast-math #Additional flags for CMSIS-DSP 
 CPPFLAGS = -DSTM32F103xB \
 	-Ivendor/CMSIS/Device/ST/STM32F1/Include \
@@ -36,11 +36,11 @@ CMSIS-DSP = ./vendor/CMSIS/CMSIS/DSP
 #Additional CMSIS Source Files
 SRC += ./vendor/CMSIS/Device/ST/STM32F1/Source/Templates/system_stm32f1xx.c \
 		$(CMSIS-DSP)/Source/TransformFunctions/arm_cfft_radix4_q15.c \
-		$(CMSIS-DSP)/Source/TransformFunctions/arm_cmplx_mag_q15.c \
+		$(CMSIS-DSP)/Source/ComplexMathFunctions/arm_cmplx_mag_q15.c \
 		$(CMSIS-DSP)/Source/CommonTables/arm_common_tables.c \
 		$(CMSIS-DSP)/Source/CommonTables/arm_const_structs.c \
-		$(CMSIS-DSP)/Source/BasicMathFunctions/arm_abs_q15.c \
-		$(CMSIS-DSP)/Source/BasicMathFunctions/arm_shift_q15.c
+		$(CMSIS-DSP)/Source/SupportFunctions/arm_bitreversal.c \
+		$(CMSIS-DSP)/Source/FastMathFunctions/arm_sqrt_q31.c \
 
 BUILD_DIR = ./build
 
