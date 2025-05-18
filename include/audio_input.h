@@ -1,6 +1,7 @@
 #ifndef AUDIO_INPUT_H
 #define AUDIO_INPUT_H
 
+#include "fft.h"
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -15,8 +16,8 @@ volatile bool adc_buf_half_ready;
 volatile bool adc_buf_full_ready;
 
 // Constants
-#define ADC_BUF_LEN 256
-#define ADC_OFFSET 2047u //The baseline offset value for MAX4466
+#define ADC_BUF_LEN (FFT_SIZE*2) // Double buffer for adc_buf[]
+#define ADC_OFFSET 2048u // The baseline offset value for MAX4466
 extern volatile uint16_t adc_buf[ADC_BUF_LEN];
 
 

@@ -2,6 +2,7 @@
 #include "audio_input.h"
 #include "stm32f1xx.h"
 #include "stdint.h"
+#include "fft.h"
 
 
 uint8_t led_colors[NUM_LEDS][3]; // RGB for each LED
@@ -78,18 +79,64 @@ void DMA1_Channel3_IRQHandler()
     Code to control the LED Strip
 ====================================*/
 
+void hsv_to_rgb(uint8_t h, uint8_t *r, uint8_t *g, uint8_t *b)
+{
+    uint8_t region = h / 43;
+    uint8_t remainder = (h - (region * 43)) * 6;
+
+    uint8_t q = 255 - remainder;
+    uint8_t t = remainder;
+
+    switch (region) {
+        case 0:
+            *r = 255; *g = t;   *b = 0;   break;
+        case 1:
+            *r = q;   *g = 255; *b = 0;   break;
+        case 2:
+            *r = 0;   *g = 255; *b = t;   break;
+        case 3:
+            *r = 0;   *g = q;   *b = 255; break;
+        case 4:
+            *r = t;   *g = 0;   *b = 255; break;
+        default:
+            *r = 255; *g = 0;   *b = q;   break;
+    }
+}
+
+
 //Update led_colors given volume
-void Update_Led_Colors(uint16_t volume) {
-    for (int i = 0; i < NUM_LEDS; i++) {
-        if (i < volume * NUM_LEDS / ADC_OFFSET) {
-            led_colors[i][0] = 0x00; // Green
-            led_colors[i][1] = 0xFF; // Red
-            led_colors[i][2] = 0x00; // Blue
-        } else {
-            led_colors[i][0] = 0x00; // Green
-            led_colors[i][1] = 0x00; // Red
-            led_colors[i][2] = 0xFF; // Blue
+void Update_Led_Colors(void) {
+    // for (int i = 0; i < NUM_LEDS; i++) {
+    //     if (i < volume * NUM_LEDS / ADC_OFFSET) {
+    //         led_colors[i][0] = 0x00; // Green
+    //         led_colors[i][1] = 0xFF; // Red
+    //         led_colors[i][2] = 0x00; // Blue
+    //     } else {
+    //         led_colors[i][0] = 0x00; // Green
+    //         led_colors[i][1] = 0x00; // Red
+    //         led_colors[i][2] = 0xFF; // Blue
+    //     }
+    // }
+
+    int max_index = 1;  // Start from 1 to skip DC
+    uint16_t max_value = fft_output[1];
+
+    for (int i = 2; i < FFT_SIZE / 2; i++) {
+        if (fft_output[i] > max_value) {
+            max_value = fft_output[i];
+            max_index = i;
         }
+    }
+
+    uint8_t hue = (max_index * 255) / (FFT_SIZE / 2);  // Hue from 0 to 255
+
+    uint8_t r, g, b;
+    hsv_to_rgb(hue, &r, &g, &b);
+
+    for (int i = 0; i < NUM_LEDS; i++) {
+        led_colors[i][0] = 0x00; // Green
+        led_colors[i][1] = 0x00; // Red
+        led_colors[i][2] = 0xFF; // Blue
     }
 }
 

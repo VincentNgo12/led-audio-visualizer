@@ -1,0 +1,23 @@
+#ifndef FFT_H
+#define FFT_H
+
+#include <stdint.h>
+#include "arm_math.h" // CMSIS-DSP main include
+#include "arm_const_structs.h" // Contains FFT configs (critical!)
+
+// Function Prototypes
+void FFT_Init(void);
+void FFT_Process(const volatile uint16_t *adc_buf);
+
+// Constants
+#define FFT_SIZE    128  // Choose power-of-2: 64, 128, 256, etc.
+#define LOG2_FFT_SIZE 7  // log2(128) = 7
+
+
+// Fixed-point input buffer (interleaved real/imaginary)
+extern q15_t fft_input[2 * FFT_SIZE];
+
+// Output magnitude buffer
+extern q15_t fft_output[FFT_SIZE];
+
+#endif

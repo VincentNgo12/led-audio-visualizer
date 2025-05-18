@@ -36,6 +36,8 @@ CMSIS-DSP = ./vendor/CMSIS/CMSIS/DSP
 #Additional CMSIS Source Files
 SRC += ./vendor/CMSIS/Device/ST/STM32F1/Source/Templates/system_stm32f1xx.c \
 		$(CMSIS-DSP)/Source/TransformFunctions/arm_cfft_radix4_q15.c \
+		$(CMSIS-DSP)/Source/TransformFunctions/arm_cfft_q15.c \
+		$(CMSIS-DSP)/Source/TransformFunctions/arm_bitreversal2.c \
 		$(CMSIS-DSP)/Source/ComplexMathFunctions/arm_cmplx_mag_q15.c \
 		$(CMSIS-DSP)/Source/CommonTables/arm_common_tables.c \
 		$(CMSIS-DSP)/Source/CommonTables/arm_const_structs.c \

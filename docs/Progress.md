@@ -63,3 +63,12 @@
 -Will try to fix the Makefile to include and compile CMSIS-DSP library tomorrow.
 ***TODO: Fix Makefile to install CMSIS-DSP
 ***TODO: Implement FFT with CMSIS-DSP
+
+
+### Day 8
+-Setup FFT and tried to test it on the LED strip
+-Ran into a bunch of compilation and include errors
+-Switch from arm_cfft_radix4_q15 to arm_cfft_q15
+-Compliation errors took a bunch of time to fix.
+-Ran into a massive bug, TIM3 PWM is not responding at all. DOn't even know where to start debugging.
+-Will try tomorrow

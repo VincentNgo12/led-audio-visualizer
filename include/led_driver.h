@@ -6,7 +6,7 @@
 
 // Function prototypes
 void LED_Init(void);
-void Update_Led_Colors(uint16_t volume); //Update led_colors given volume
+void Update_Led_Colors(void); //Update led_colors given volume
 void Encode_Led_Data();
 
 // DMA1 Channel 3 Interupt flag

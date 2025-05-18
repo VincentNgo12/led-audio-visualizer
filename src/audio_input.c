@@ -1,6 +1,7 @@
 #include "audio_input.h"
 #include "led_driver.h"
 #include "stm32f1xx.h"
+#include "fft.h"
 #include "stdint.h"
 
 volatile uint16_t adc_buf[ADC_BUF_LEN] __attribute__((aligned(4)));
@@ -77,6 +78,10 @@ void ADC1_Init(){
     DMA1_Channel1->CCR |= DMA_CCR_TCIE;  // Transfer Complete Interrupt
     DMA1_Channel1->CCR |= DMA_CCR_HTIE;  // Half Transfer Interrupt
     NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+
+
+    // Initialize FFT
+    FFT_Init();
 }
 
 /*=======================
@@ -89,24 +94,17 @@ uint16_t ADC1_Read()
     return ADC1->DR;
 }
 
-uint16_t abs2(int x) {
-    return (x < 0) ? -x : x;
-}
 
 //Process ADC1 Input
 void ADC_Buf_Process(uint8_t half){
-    uint32_t sum = 0;
+    // Double adc_buf implementation: Process each half at a time.
     volatile uint16_t* buf_ptr = (half == 0) ? &adc_buf[0] : &adc_buf[ADC_BUF_LEN / 2];
 
-    for (int i = 0; i < ADC_BUF_LEN / 2; i++) {
-        sum += buf_ptr[i];
-    }
+    // Perform FFT on half of the adc_buf[] 
+    FFT_Process(buf_ptr);
 
-    uint16_t avg = sum / (ADC_BUF_LEN / 2);
-    uint16_t volume = abs2(avg - ADC_OFFSET);
-
-    Update_Led_Colors(volume);
-    Encode_Led_Data();
+    Update_Led_Colors(); // Update LED strip color data (led_colors[])
+    Encode_Led_Data(); // Apply LED strip update
 }
 
 
