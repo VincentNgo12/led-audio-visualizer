@@ -157,7 +157,8 @@
  int main(void);
  extern void SystemInit(void); //SystemInit() from system_stm32f1xx.c
  
- /* Reset handler: program entry after MCU reset */ void reset_handler(void)
+ /* Reset handler: program entry after MCU reset */
+ void reset_handler(void)
  {
      /* Copy .data section from Flash to SRAM */
      uint32_t data_size = (uint32_t)&_edata - (uint32_t)&_sdata;

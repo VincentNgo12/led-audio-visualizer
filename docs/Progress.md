@@ -72,3 +72,17 @@
 -Compliation errors took a bunch of time to fix.
 -Ran into a massive bug, TIM3 PWM is not responding at all. DOn't even know where to start debugging.
 -Will try tomorrow
+
+
+### Day 9
+-Start debugging.
+-PA13 didn't even light on so the program didn't even reach main()
+-Found out with GDB that the program crashed at reset_handler(), dunno why
+-arm-none-eabi-size shows that code size is not the problem, no overflow but reset_handler() stall at push {r3, lr}
+-Maybe it has to do with the optimization flags of the compiler (-flto)
+-Adding __attribute__((naked, used)) to reset_handler() fixed the issue, but the program still don't reach main().
+-Now the program stall at SystemInit() inside reset_handler()
+-removed -flto from startup.o and system_stm32f1xx.o
+-That -flto flag is definitely the culprit, even affecting main.c 
+-That -flto is causing so much trouble, affecting so much files. I need to come to a solution tomorrow.
+-At least I know exactly what the problem is now.
