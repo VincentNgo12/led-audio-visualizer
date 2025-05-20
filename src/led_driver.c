@@ -25,7 +25,7 @@ void LED_Init(){
 
     /*Configure TIM3 for PWD Output*/
     TIM3->PSC = TIM3_PRESCALER;  // = 0 (No prescaler)
-    TIM3->ARR = TIM3_PERIOD;   // Auto-reload value (ARR = 100 - 1)
+    TIM3->ARR = TIM3_PERIOD;   // Auto-reload value (ARR = 90 - 1)
     TIM3->CCR1 = 50;                   // Initial duty cycle
     TIM3->CCMR1 |= TIM_CCMR1_OC1M_1 | TIM_CCMR1_OC1M_2; // PWM Mode (Output high while CNT < CCR1, low otherwise)
     TIM3->CCMR1 |= TIM_CCMR1_OC1PE;   // Enable preload
@@ -134,9 +134,9 @@ void Update_Led_Colors(void) {
     hsv_to_rgb(hue, &r, &g, &b);
 
     for (int i = 0; i < NUM_LEDS; i++) {
-        led_colors[i][0] = 0x00; // Green
-        led_colors[i][1] = 0x00; // Red
-        led_colors[i][2] = 0xFF; // Blue
+        led_colors[i][0] = g; // Green
+        led_colors[i][1] = r; // Red
+        led_colors[i][2] = b; // Blue
     }
 }
 

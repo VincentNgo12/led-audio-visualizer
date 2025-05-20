@@ -91,3 +91,5 @@
 ### Day 10
 -Decided to change Makefile to only apply -flto -Os to those CMSIS-DSP files.
 -Seems to be working now, should have come up with this earlier
+-Current ADC1 sample rate is ~142,857 samples/sec
+-Switch to using TIM2 to trigger ADC1 capture at 43.47 kHz sample rate

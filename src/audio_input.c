@@ -10,6 +10,24 @@ volatile bool adc_buf_full_ready = false; //adc_buf[] full Interupt Flag
 
 void ADC1_Init(){
     /*====================================
+        We will use TIM2 to trigger ADC1
+        capture at 44.1 kHz sampling rate.
+        Code to initialize TIM2
+    ======================================*/
+    RCC->APB1ENR |= RCC_APB1ENR_TIM2EN; // Enable TIM2 clock
+    TIM2->PSC = 71;      // 72MHz / (71+1) = 1 MHz
+    TIM2->ARR = 22;      // 1 MHz / (22+1) ≈ 43.47 kHz (~close to 44.1kHz)
+
+    // Set update event as TRGO (trigger output)
+    TIM2->CR2 &= ~TIM_CR2_MMS;        // Clear MMS bits
+    TIM2->CR2 |= TIM_CR2_MMS_1;       // MMS = 010: Update event as trigger output (TRGO)
+
+    // Start TIM2
+    TIM2->CR1 |= TIM_CR1_CEN;
+
+
+
+    /*====================================
        Code to initialize ADC1_IN0 (AP0)
     ====================================*/
 
@@ -25,16 +43,19 @@ void ADC1_Init(){
 
     // Power on ADC
     ADC1->CR2 |= ADC_CR2_ADON;  // Power on ADC
-    //for (volatile uint32_t i = 0; i < 1000; i++);  // Small Delay (1ms)
 
     // Calibrate ADC
     ADC1->CR2 |= ADC_CR2_CAL;       // Start calibration
     while (ADC1->CR2 & ADC_CR2_CAL); // Wait
 
     // Configure ADC
-    ADC1->SMPR2 |= ADC_SMPR2_SMP0;  // Max sampling time for Ch0 (71.5 cycles)
+    ADC1->SMPR2 |= ADC_SMPR2_SMP0;  // Max sampling time for Ch0 (71.5 cycles) (~142,857 samples/sec)
     ADC1->SQR1 = 0;                 // 1 conversion in sequence
     ADC1->SQR3 = 0;                 // Convert Channel 0 (PA0)   
+    // Set external trigger to TIM2 TRGO (EXTSEL = 011)
+    ADC1->CR2 &= ~ADC_CR2_EXTSEL;
+    ADC1->CR2 |= (3 << ADC_CR2_EXTSEL_Pos); // EXTSEL = 011: TIM2 TRGO
+    ADC1->CR2 |= ADC_CR2_EXTTRIG; // Enable external trigger
 
     ADC1->CR2 |= ADC_CR2_CONT;      // Continuous mode
     ADC1->CR2 |= ADC_CR2_DMA;       // Request DMA on each conversion
