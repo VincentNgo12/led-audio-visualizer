@@ -86,3 +86,8 @@
 -That -flto flag is definitely the culprit, even affecting main.c 
 -That -flto is causing so much trouble, affecting so much files. I need to come to a solution tomorrow.
 -At least I know exactly what the problem is now.
+
+
+### Day 10
+-Decided to change Makefile to only apply -flto -Os to those CMSIS-DSP files.
+-Seems to be working now, should have come up with this earlier

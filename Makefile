@@ -9,7 +9,7 @@ PROGRAM = led_audio_visualizer
 
 # Compiler and flags
 CC = arm-none-eabi-gcc
-CFLAGS = -mcpu=cortex-m3 -mthumb -nostdlib -Wall -Werror -Os -flto
+CFLAGS = -mcpu=cortex-m3 -mthumb -nostdlib -Wall -Werror
 CFLAGS += -DARM_MATH_CM3 #-Ofast -ffast-math #Additional flags for CMSIS-DSP 
 CPPFLAGS = -DSTM32F103xB \
 	-Ivendor/CMSIS/Device/ST/STM32F1/Include \
@@ -49,15 +49,20 @@ BUILD_DIR = ./build
 # Object files will all go into the build/ directory
 OBJ = $(addprefix $(BUILD_DIR)/, $(notdir $(SRC:.c=.o)))
 
-# Disable LTO only for these files
-NO_LTO_FILES = \
-    startup.o \
-    system_stm32f1xx.o \
-	main.o \
-    arm_cfft_q15.o
+# Enable LTO only for these files
+LTO_FILES = \
+    arm_cfft_radix4_q15.o \
+	arm_cfft_q15.o \
+	arm_bitreversal2.o \
+	arm_cmplx_mag_q15.o \
+	arm_common_tables.o \
+	arm_const_structs.o \
+	arm_bitreversal.o \
+	arm_sqrt_q31.o \
 
-$(foreach file,$(NO_LTO_FILES),\
-    $(eval $(BUILD_DIR)/$(notdir $(file:.c=.o)): CFLAGS := $(filter-out -flto,$(CFLAGS))))
+# Apply LTO only to specified files
+$(foreach file,$(LTO_FILES),\
+	$(eval $(BUILD_DIR)/$(notdir $(file:.c=.o)): CFLAGS := $(CFLAGS) -flto -Os ))
 
 vpath %.c $(sort $(dir $(SRC))) #Find Source Files across Directories
 
