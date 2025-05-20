@@ -8,7 +8,7 @@ q15_t fft_output[FFT_SIZE];
 static const arm_cfft_instance_q15 *fft_config;
 
 void FFT_Init(void) {
-    fft_config = &arm_cfft_sR_q15_len128;
+    fft_config = &arm_cfft_sR_q15_len512;
 }
 
 void FFT_Process(const volatile uint16_t *adc_buf) {

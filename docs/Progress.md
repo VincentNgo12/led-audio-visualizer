@@ -93,3 +93,9 @@
 -Seems to be working now, should have come up with this earlier
 -Current ADC1 sample rate is ~142,857 samples/sec
 -Switch to using TIM2 to trigger ADC1 capture at 43.47 kHz sample rate
+-Start setting up header constant to divide LED strip into bars to visualize
+-Setup general Update_Led_Colors() but need more work.
+***TODO: +Map frequency bins magnitude into LED bars brightness
+         +Use q15_t to do numerical calculations
+         +Assign unique colors to each LED bars based on frequency bins magnitude
+         
