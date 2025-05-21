@@ -19,11 +19,12 @@ volatile bool pwm_ready;
 #define NUM_LEDS 30 //Number of LEDs on strip
 #define NUM_BARS 4// Number of LED bars to visualize audio
 #define LEDS_PER_BAR ((int) NUM_LEDS / NUM_BARS)
-#define BINS_PER_BAR = ((int) (FFT_SIZE / 2) / NUM_BARS)
+#define BINS_PER_BAR ((int) (FFT_SIZE / 2) / NUM_BARS)
 extern uint8_t led_colors[NUM_LEDS][3]; //RGB values for each LED
 
 
 // Constants
+#define LED_MAX_BRIGHTNESS 255
 #define LED_PWM_FREQ_HZ     800000u // 800 kHz (1.25 microsec for each bits, ARR = 89, PSC = 0, 72MHz system clock)
 #define LED_PWM_RESOLUTION  90u // ARR value (90 steps)
 
@@ -41,5 +42,6 @@ extern uint8_t led_colors[NUM_LEDS][3]; //RGB values for each LED
 #define PWM_BITS (LED_BITS + RESET_SLOTS) //Full size of pwm_buf[] array
 
 uint16_t pwm_buf[PWM_BITS]; // TIM3->CCR1 values to control PWM
+
 
 #endif // LED_DRIVER_H

@@ -98,4 +98,9 @@
 ***TODO: +Map frequency bins magnitude into LED bars brightness
          +Use q15_t to do numerical calculations
          +Assign unique colors to each LED bars based on frequency bins magnitude
-         
+
+    
+### Day 11
+-Scaled frequencies magnitude to appropriate LED brightness.
+-Assign frequnecy bins to visual bars.
+-Seems to work very well, however unused LEDs are always full white which will draw lots of current. Need to fix that.

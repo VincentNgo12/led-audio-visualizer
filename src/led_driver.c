@@ -3,6 +3,7 @@
 #include "stm32f1xx.h"
 #include "stdint.h"
 #include "fft.h"
+#include "log_lut.h"
 
 
 uint8_t led_colors[NUM_LEDS][3]; // RGB for each LED
@@ -78,31 +79,32 @@ void DMA1_Channel3_IRQHandler()
 /*====================================
     Code to control the LED Strip
 ====================================*/
-int magnitude_to_brightness(float magnitude) {
-    float scaled = logf(magnitude + 1.0f);  // avoid log(0)
-    scaled *= scale_factor;                 // tune this manually
-    return clamp((int)scaled, 0, LED_MAX_BRIGHTNESS);
+int Magnitude_To_Brightness_q15(q15_t mag_q15) {
+    uint16_t abs_mag = (mag_q15 < 0) ? -mag_q15 : mag_q15; // abs_mag: 0.0 to 1.0
+    uint8_t index = (abs_mag * (LUT_SIZE - 1)) >> 15;  // scale 0 to LUT_SIZE
+    return log_lut[index]; // Return the associated brightness (from Look-up table)
 }
+
 
 
 //Update led_colors given volume
 void Update_Led_Colors(void) {
     // Calculate the brightness of each LED bar with associated frequency bins
     for (int bar = 0; bar < NUM_BARS; bar++) {
-        float magnitude = 0.0f;
+        int32_t magnitude = 0; // Uses int32_t to avoid overflow during q15 calculations
         int start_bin = 1 + bar * BINS_PER_BAR;
         int end_bin = start_bin + BINS_PER_BAR;
 
         for (int i = start_bin; i < end_bin; i++) {
-            magnitude += fft_output[i]; // Total magnitude of current frequnency bins
+            magnitude += (fft_output[i] < 0) ? -fft_output[i] : fft_output[i]; // Total magnitude of current frequnency bins (Abs value)
         }
 
-        magnitude /= bins_per_bar;  // average magnitude
-        float brightness = magnitude_to_brightness(magnitude);
+        q15_t avg_magnitude = (q15_t)(magnitude / BINS_PER_BAR);  // Average magnitude (back to Q15)
+        int brightness = Magnitude_To_Brightness_q15(avg_magnitude);
 
-        // Update led_colors[]
-        int led_idx_start = bar * LEDS_PER_BAR
-        int led_idx_end = led_idx_start + LEDS_PER_BAR
+        // Update led_colors[] for current bar
+        int led_idx_start = bar * LEDS_PER_BAR;
+        int led_idx_end = led_idx_start + LEDS_PER_BAR;
         for (int i = led_idx_start; i < led_idx_end; i++) {
             led_colors[i][0] = 0x00; // Green
             led_colors[i][1] = brightness; // Red
