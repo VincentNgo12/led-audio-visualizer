@@ -104,3 +104,22 @@
 -Scaled frequencies magnitude to appropriate LED brightness.
 -Assign frequnecy bins to visual bars.
 -Seems to work very well, however unused LEDs are always full white which will draw lots of current. Need to fix that.
+-Tested with a DC powersupply, oscilloscope, and a function generator.
+-The FFT is working amazingly, its a charm.
+-The LED bar are divided perfectly for each frequency bins too!
+-However, the oscilloscope is telling that the MAX4466 is very insensitive, it's having a really hard time picking up sounds.
+*** TODO: Come up with a way for a more sensitive microphone.
+
+
+### Day 12
+-Tried the Big Sound sensor with the oscilloscope, no luck.
+-Can't stick with MAX4466 either, too insenstive.
+-Code to turn off unsued LEDs
+-Added peak hold and decay behaviour for each LEDs bars
+-Dynamic LED bar height
+-Didn't work beautiful quite yet, bar height are jumping crazy
+-The decay rate of 1 is too fast for 72MHz.
+-Obviously can't use float for decay rate, need to come up with something.
+-Something has gone crazy ADC is not at constant 0 when it should be.
+-Turns out I was using unsigned int for brightness so when it decay past zero, the value overflowed
+-Found out the Log_LUT table doesn't even have the maximum value of 255.

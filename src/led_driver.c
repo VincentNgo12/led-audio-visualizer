@@ -7,6 +7,7 @@
 
 
 uint8_t led_colors[NUM_LEDS][3]; // RGB for each LED
+int8_t led_bar_levels[NUM_BARS] = {0};
 uint16_t pwm_buf[PWM_BITS]; // TIM3->CCR1 values to control PWM
 
 volatile bool pwm_ready = false; // DMA1 Channel 3 Interupt flag
@@ -79,18 +80,39 @@ void DMA1_Channel3_IRQHandler()
 /*====================================
     Code to control the LED Strip
 ====================================*/
-int Magnitude_To_Brightness_q15(q15_t mag_q15) {
+// Get brightness based on abverage signal magnitude
+int8_t Magnitude_To_Brightness_q15(q15_t mag_q15) {
     uint16_t abs_mag = (mag_q15 < 0) ? -mag_q15 : mag_q15; // abs_mag: 0.0 to 1.0
     uint8_t index = (abs_mag * (LUT_SIZE - 1)) >> 15;  // scale 0 to LUT_SIZE
-    return log_lut[index]; // Return the associated brightness (from Look-up table)
+    return log_lut[index]; // Return the associated brightness (from Look-up table) }
 }
 
+// Set bar levels based on new brightness and return updated brightness
+int8_t Set_Bar_Levels(int8_t new_brightness, uint8_t bar_idx) {
+    // Apply a "peak hold + decay" behavior
+    if (new_brightness > led_bar_levels[bar_idx]) {
+        led_bar_levels[bar_idx] = new_brightness; // jump up quickly
+    } else {
+        led_bar_levels[bar_idx] -= BRIGHTNESS_DECAY_RATE;
+        if (led_bar_levels[bar_idx] < 0) led_bar_levels[bar_idx] = 0;
+        new_brightness = led_bar_levels[bar_idx]; // Updated "decayed" brightness
+    }    
+
+    return new_brightness;
+}
+
+// Get Bar height based on brightness
+uint16_t Get_Bar_Height(uint8_t brightness) {
+    uint16_t height = (brightness * LEDS_PER_BAR)/LED_MAX_BRIGHTNESS;
+    return height;
+}
 
 
 //Update led_colors given volume
 void Update_Led_Colors(void) {
+    uint16_t led_idx = 0; // Number of LEDs updated
     // Calculate the brightness of each LED bar with associated frequency bins
-    for (int bar = 0; bar < NUM_BARS; bar++) {
+    for (uint8_t bar = 0; bar < NUM_BARS; bar++) {
         int32_t magnitude = 0; // Uses int32_t to avoid overflow during q15 calculations
         int start_bin = 1 + bar * BINS_PER_BAR;
         int end_bin = start_bin + BINS_PER_BAR;
@@ -100,17 +122,29 @@ void Update_Led_Colors(void) {
         }
 
         q15_t avg_magnitude = (q15_t)(magnitude / BINS_PER_BAR);  // Average magnitude (back to Q15)
-        int brightness = Magnitude_To_Brightness_q15(avg_magnitude);
+        int8_t brightness = Magnitude_To_Brightness_q15(avg_magnitude); // Brightness based on magnitude
+        brightness = Set_Bar_Levels(brightness, bar); // Brightness after updated LED bar levels
+        // uint16_t bar_height = Get_Bar_Height(brightness); // Bar height based on brightness
 
         // Update led_colors[] for current bar
-        int led_idx_start = bar * LEDS_PER_BAR;
-        int led_idx_end = led_idx_start + LEDS_PER_BAR;
-        for (int i = led_idx_start; i < led_idx_end; i++) {
-            led_colors[i][0] = 0x00; // Green
-            led_colors[i][1] = brightness; // Red
+        uint16_t led_idx_start = bar * LEDS_PER_BAR;
+        uint16_t led_idx_end = led_idx_start + LEDS_PER_BAR; // Only light LEDs to bar_height
+        for (uint16_t i = led_idx_start; i < led_idx_end; i++) {
+            led_colors[i][0] = brightness; // Green
+            led_colors[i][1] = 0x00; // Red
             led_colors[i][2] = 0x00; // Blue
+            led_idx++;
         }
     }
+
+    if (led_idx == NUM_LEDS) return; // Return if all LEDs are updated
+
+    // Turn off unused LEDs
+    for (int i = led_idx; i < NUM_LEDS; i++) {
+        led_colors[i][0] = 0x00; // Green
+        led_colors[i][1] = 0x00; // Red
+        led_colors[i][2] = 0x00; // Blue
+    }    
 }
 
 

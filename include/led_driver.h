@@ -20,7 +20,9 @@ volatile bool pwm_ready;
 #define NUM_BARS 4// Number of LED bars to visualize audio
 #define LEDS_PER_BAR ((int) NUM_LEDS / NUM_BARS)
 #define BINS_PER_BAR ((int) (FFT_SIZE / 2) / NUM_BARS)
+#define BRIGHTNESS_DECAY_RATE 1
 extern uint8_t led_colors[NUM_LEDS][3]; //RGB values for each LED
+int8_t led_bar_levels[NUM_BARS]; // Current sound level for each LED bars (will decay over time)
 
 
 // Constants
