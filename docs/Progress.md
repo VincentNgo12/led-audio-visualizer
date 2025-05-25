@@ -123,3 +123,27 @@
 -Something has gone crazy ADC is not at constant 0 when it should be.
 -Turns out I was using unsigned int for brightness so when it decay past zero, the value overflowed
 -Found out the Log_LUT table doesn't even have the maximum value of 255.
+
+
+### Day 13
+-Fixed the underflow problem
+-Having a real bad day, realized that the function generator is producing messy signal even the oscilloscope can't read the frequnecy.
+-Spend too much time on this issue, but if it's not fixed I can't move on with the project testing.
+-I'm sure the damn log() lookup table are incorrect too! (it was pretty correct actually)
+-Added 4x gain to the FFT magnitude, I think that's the problem.
+-Added min bar height
+-Something is very wrong with the loop to set bar height
+-Fixed so that LEDs over bar_height will be turned off, didn't realize this was quite a big bug
+-Really bad day today, spend so much time and nothing done
+*** TODO: +Smoother Decay Rate
+          +Get better microphone
+          +
+
+### Day 14
+-Will work on the color gradient today and maybe the smoother decay rate.
+-Its working, but since the hue_offset is int, its incrementing too fast so the colors are changing too rapidly.
+-I'm going to fix this along with the Decay Rate
+-Used Q4.4 fixed point to have a more gradual decay for the brightness levels,
+-The Hue decay rate is now good too, I'm very pleased with the color gradient results (It's pretty)
+*** TODO: + Fix Get_Bar_Height() to assign heights more cleanly
+          + Figure out the expected ADC signal range to process more cleanly. 

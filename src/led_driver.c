@@ -7,10 +7,12 @@
 
 
 uint8_t led_colors[NUM_LEDS][3]; // RGB for each LED
-int8_t led_bar_levels[NUM_BARS] = {0};
+uint16_t led_bar_levels_q[NUM_BARS] = {0}; // Fixed-point (Q4.4)
 uint16_t pwm_buf[PWM_BITS]; // TIM3->CCR1 values to control PWM
 
 volatile bool pwm_ready = false; // DMA1 Channel 3 Interupt flag
+static uint16_t hue_offset_q = 0; // Hue offset for LED colors (Q4.4)
+#define FRACTION_SHIFT 4 // (To implement Q4.4)
 
 /*======================================================
   Code to initialize LED (Setup PWM with TIM3 and DMA)
@@ -80,34 +82,6 @@ void DMA1_Channel3_IRQHandler()
 /*====================================
     Code to control the LED Strip
 ====================================*/
-// Get brightness based on abverage signal magnitude
-int8_t Magnitude_To_Brightness_q15(q15_t mag_q15) {
-    uint16_t abs_mag = (mag_q15 < 0) ? -mag_q15 : mag_q15; // abs_mag: 0.0 to 1.0
-    uint8_t index = (abs_mag * (LUT_SIZE - 1)) >> 15;  // scale 0 to LUT_SIZE
-    return log_lut[index]; // Return the associated brightness (from Look-up table) }
-}
-
-// Set bar levels based on new brightness and return updated brightness
-int8_t Set_Bar_Levels(int8_t new_brightness, uint8_t bar_idx) {
-    // Apply a "peak hold + decay" behavior
-    if (new_brightness > led_bar_levels[bar_idx]) {
-        led_bar_levels[bar_idx] = new_brightness; // jump up quickly
-    } else {
-        led_bar_levels[bar_idx] -= BRIGHTNESS_DECAY_RATE;
-        if (led_bar_levels[bar_idx] < 0) led_bar_levels[bar_idx] = 0;
-        new_brightness = led_bar_levels[bar_idx]; // Updated "decayed" brightness
-    }    
-
-    return new_brightness;
-}
-
-// Get Bar height based on brightness
-uint16_t Get_Bar_Height(uint8_t brightness) {
-    uint16_t height = (brightness * LEDS_PER_BAR)/LED_MAX_BRIGHTNESS;
-    return height;
-}
-
-
 //Update led_colors given volume
 void Update_Led_Colors(void) {
     uint16_t led_idx = 0; // Number of LEDs updated
@@ -122,19 +96,31 @@ void Update_Led_Colors(void) {
         }
 
         q15_t avg_magnitude = (q15_t)(magnitude / BINS_PER_BAR);  // Average magnitude (back to Q15)
-        int8_t brightness = Magnitude_To_Brightness_q15(avg_magnitude); // Brightness based on magnitude
+        uint8_t brightness = Magnitude_To_Brightness_q15(avg_magnitude); // Brightness based on magnitude
         brightness = Set_Bar_Levels(brightness, bar); // Brightness after updated LED bar levels
-        // uint16_t bar_height = Get_Bar_Height(brightness); // Bar height based on brightness
+        uint16_t bar_height = Get_Bar_Height(brightness); // Bar height based on brightness
 
         // Update led_colors[] for current bar
         uint16_t led_idx_start = bar * LEDS_PER_BAR;
-        uint16_t led_idx_end = led_idx_start + LEDS_PER_BAR; // Only light LEDs to bar_height
-        for (uint16_t i = led_idx_start; i < led_idx_end; i++) {
-            led_colors[i][0] = brightness; // Green
-            led_colors[i][1] = 0x00; // Red
-            led_colors[i][2] = 0x00; // Blue
+        for (uint16_t i = 0; i < LEDS_PER_BAR; i++) {
+            uint16_t index = led_idx_start + i;
+            uint8_t hue_offset = (uint8_t)(hue_offset_q >> FRACTION_SHIFT);
+            uint8_t hue = ((i * 150) / LEDS_PER_BAR + hue_offset) & 0xFF; // Maps to hue range 0–255 
+            uint8_t r, g, b;
+            HSV_To_RGB(hue, 255, brightness, &r, &g, &b);            
+
+            if (i < bar_height) {
+                led_colors[index][0] = g; // Green
+                led_colors[index][1] = r;       // Red
+                led_colors[index][2] = b;       // Blue
+            } else {
+                // Turn off unused LEDs in the bar
+                led_colors[index][0] = 0x00;
+                led_colors[index][1] = 0x00;
+                led_colors[index][2] = 0x00;
+            }
             led_idx++;
-        }
+        } 
     }
 
     if (led_idx == NUM_LEDS) return; // Return if all LEDs are updated
@@ -145,6 +131,8 @@ void Update_Led_Colors(void) {
         led_colors[i][1] = 0x00; // Red
         led_colors[i][2] = 0x00; // Blue
     }    
+
+    hue_offset_q += HUE_OFFSET_RATE; // Change hue over time
 }
 
 
@@ -170,4 +158,64 @@ void Encode_Led_Data() {
     for (int i = 0; i < RESET_SLOTS; i++) {
         pwm_buf[bit_idx++] = 0;
     }
+}
+
+
+// Get brightness based on abverage signal magnitude
+uint8_t Magnitude_To_Brightness_q15(q15_t mag_q15) {
+    uint16_t abs_mag = (mag_q15 < 0) ? -mag_q15 : mag_q15; // abs_mag: 0.0 to 1.0
+    abs_mag = __SSAT(abs_mag << 2, 16);  // shift left to boost signal (x2)
+    uint8_t index = (abs_mag * (LUT_SIZE - 1)) >> 15;  // scale 0 to LUT_SIZE
+    return log_lut[index]; // Return the associated brightness (from Look-up table) }
+}
+
+// Set bar levels based on new brightness and return updated brightness
+uint8_t Set_Bar_Levels(int8_t new_brightness, uint8_t bar_idx) {
+    uint16_t new_brightness_q = ((uint16_t)new_brightness) << DECAY_SHIFT; // Convert to fixed-point
+    uint16_t current_level_q = led_bar_levels_q[bar_idx];
+    // Apply a "peak hold + decay" behavior
+    if (new_brightness_q > current_level_q) {
+        current_level_q = new_brightness_q; // jump up quickly
+    } else if (current_level_q >= BRIGHTNESS_DECAY_Q){
+        current_level_q -= BRIGHTNESS_DECAY_Q; // Slow decay
+    } else {
+        current_level_q = 0;
+    }    
+
+    led_bar_levels_q[bar_idx] = current_level_q; // Update led_bar_levels[]
+    new_brightness = (uint8_t)(led_bar_levels_q[bar_idx] >> DECAY_SHIFT); // Convert back to normal 8-bit brightness
+
+    return new_brightness;
+}
+
+// Get Bar height based on brightness
+uint16_t Get_Bar_Height(uint8_t brightness) {
+    if (brightness == 0) return 0;
+
+    // Boost perceived height by nonlinearly mapping brightness
+    brightness += 180;
+    uint32_t scaled = brightness * brightness; // Nonlinear: square it
+    uint16_t height = (scaled * LEDS_PER_BAR) / (LED_MAX_BRIGHTNESS * LED_MAX_BRIGHTNESS);
+
+    return height;
+}
+
+
+// HSV to RGB converter
+void HSV_To_RGB(uint8_t h, uint8_t s, uint8_t v, uint8_t* r, uint8_t* g, uint8_t* b){
+    uint8_t region = h / 43; // 256 / 6 ≈ 43 (Divide into 6 regions of Hue colors)
+    uint8_t remainder = (h - (region * 43)) * 6; // How far between two colors
+
+    uint8_t p = (v * (255 - s)) >> 8;
+    uint8_t q = (v * (255 - ((s * remainder) >> 8))) >> 8;
+    uint8_t t = (v * (255 - ((s * (255 - remainder)) >> 8))) >> 8;
+
+    switch (region) {
+        case 0: *r = v; *g = t; *b = p; break; // Red → Yellow
+        case 1: *r = q; *g = v; *b = p; break; // Yellow → Green
+        case 2: *r = p; *g = v; *b = t; break; // Green → Cyan
+        case 3: *r = p; *g = q; *b = v; break; // Cyan → Blue
+        case 4: *r = t; *g = p; *b = v; break; // Blue → Magenta
+        default:*r = v; *g = p; *b = q; break; // Magenta → Red 
+    }    
 }
