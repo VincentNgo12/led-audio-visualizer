@@ -3,6 +3,7 @@
 
 q15_t fft_input[2 * FFT_SIZE]; // Format: [real0, imag0, real1, imag1, ...]
 q15_t fft_output[FFT_SIZE];
+q15_t max_mag;
 
 // CMSIS FFT config 
 static const arm_cfft_instance_q15 *fft_config;
@@ -24,4 +25,12 @@ void FFT_Process(const volatile uint16_t *adc_buf) {
 
     // Step 3: Compute magnitude
     arm_cmplx_mag_q15(fft_input, fft_output, FFT_SIZE);
+
+
+    // Find max magnitude (for auto-scaling)
+    max_mag = 0;
+    for (int i = 0; i < FFT_SIZE; i++) {
+        if (fft_output[i] > max_mag)
+            max_mag = fft_output[i];
+    }
 }

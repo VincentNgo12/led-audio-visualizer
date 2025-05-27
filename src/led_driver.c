@@ -96,7 +96,7 @@ void Update_Led_Colors(void) {
         }
 
         q15_t avg_magnitude = (q15_t)(magnitude / BINS_PER_BAR);  // Average magnitude (back to Q15)
-        uint8_t brightness = Magnitude_To_Brightness_q15(avg_magnitude); // Brightness based on magnitude
+        uint8_t brightness = Magnitude_To_Brightness_q15(avg_magnitude, max_mag); // Brightness based on magnitude
         brightness = Set_Bar_Levels(brightness, bar); // Brightness after updated LED bar levels
         uint16_t bar_height = Get_Bar_Height(brightness); // Bar height based on brightness
 
@@ -162,10 +162,13 @@ void Encode_Led_Data() {
 
 
 // Get brightness based on abverage signal magnitude
-uint8_t Magnitude_To_Brightness_q15(q15_t mag_q15) {
+uint8_t Magnitude_To_Brightness_q15(q15_t mag_q15, q15_t max_mag) {
+    if (max_mag == 0) return 0; // avoid divide by 0
     uint16_t abs_mag = (mag_q15 < 0) ? -mag_q15 : mag_q15; // abs_mag: 0.0 to 1.0
-    abs_mag = __SSAT(abs_mag << 2, 16);  // shift left to boost signal (x2)
-    uint8_t index = (abs_mag * (LUT_SIZE - 1)) >> 15;  // scale 0 to LUT_SIZE
+    // abs_mag = __SSAT(abs_mag << 2, 16);  // shift left to boost signal (x2)
+    uint32_t scaled = ((uint32_t)abs_mag << 15) / max_mag;  // Now scaled from 0 to 32767
+    if (scaled > 32767) scaled = 32767;
+    uint8_t index = (scaled * (LUT_SIZE - 1)) >> 15;  // scale 0 to LUT_SIZE
     return log_lut[index]; // Return the associated brightness (from Look-up table) }
 }
 
@@ -192,10 +195,7 @@ uint8_t Set_Bar_Levels(int8_t new_brightness, uint8_t bar_idx) {
 uint16_t Get_Bar_Height(uint8_t brightness) {
     if (brightness == 0) return 0;
 
-    // Boost perceived height by nonlinearly mapping brightness
-    brightness += 180;
-    uint32_t scaled = brightness * brightness; // Nonlinear: square it
-    uint16_t height = (scaled * LEDS_PER_BAR) / (LED_MAX_BRIGHTNESS * LED_MAX_BRIGHTNESS);
+    uint16_t height = (brightness * LEDS_PER_BAR) / (LED_MAX_BRIGHTNESS);
 
     return height;
 }

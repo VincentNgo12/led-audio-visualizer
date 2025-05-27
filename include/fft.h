@@ -20,4 +20,7 @@ extern q15_t fft_input[2 * FFT_SIZE];
 // Output magnitude buffer
 extern q15_t fft_output[FFT_SIZE];
 
+// Max magnitude for current frequency bins (for auto-scaling)
+q15_t max_mag;
+
 #endif

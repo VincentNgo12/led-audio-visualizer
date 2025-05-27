@@ -9,7 +9,7 @@
 void LED_Init(void);
 void Update_Led_Colors(void); //Update led_colors given volume
 void Encode_Led_Data();
-uint8_t Magnitude_To_Brightness_q15(q15_t mag_q15);
+uint8_t Magnitude_To_Brightness_q15(q15_t mag_q15, q15_t max_mag);
 uint8_t Set_Bar_Levels(int8_t new_brightness, uint8_t bar_idx);
 uint16_t Get_Bar_Height(uint8_t brightness);
 void HSV_To_RGB(uint8_t h, uint8_t s, uint8_t v, uint8_t* r, uint8_t* g, uint8_t* b); // HSV to RGB converter

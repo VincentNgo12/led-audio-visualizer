@@ -147,3 +147,13 @@
 -The Hue decay rate is now good too, I'm very pleased with the color gradient results (It's pretty)
 *** TODO: + Fix Get_Bar_Height() to assign heights more cleanly
           + Figure out the expected ADC signal range to process more cleanly. 
+
+
+### Day 15
+-Tried to address the FFT magnitude problem to determine the bar height more accurately.
+-ADC signal range is expected to be between 0 and 4095 max.
+-Implemented auto-scaling for FFT magnitudes but doesn't seems to help much. The bar level is still 1 at most.
+-I believe its the log_lut[] fault again
+-Updated log_lut[] and now there is an underflow problem and I dont know where it is
+-log_lut[] approach is definitely not reliable, gotta address that tomorrow and potentially replace the method.
+*** TODO: +address the log_lut[] mapping approach
