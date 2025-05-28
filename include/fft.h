@@ -8,6 +8,7 @@
 // Function Prototypes
 void FFT_Init(void);
 void FFT_Process(const volatile uint16_t *adc_buf);
+q15_t Normalize_FFT_Value(q15_t val, q15_t peak_val);
 
 // Constants
 #define FFT_SIZE    512  // Choose power-of-2: 64, 128, 256, etc.

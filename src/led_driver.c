@@ -92,7 +92,8 @@ void Update_Led_Colors(void) {
         int end_bin = start_bin + BINS_PER_BAR;
 
         for (int i = start_bin; i < end_bin; i++) {
-            magnitude += (fft_output[i] < 0) ? -fft_output[i] : fft_output[i]; // Total magnitude of current frequnency bins (Abs value)
+            q15_t norm_val = Normalize_FFT_Value(fft_output[i], max_mag); // Get normalized magnitude
+            magnitude += (norm_val < 0) ? -norm_val : norm_val; // Total normalized magnitude of current frequnency bins (Abs value)
         }
 
         q15_t avg_magnitude = (q15_t)(magnitude / BINS_PER_BAR);  // Average magnitude (back to Q15)
@@ -165,15 +166,13 @@ void Encode_Led_Data() {
 uint8_t Magnitude_To_Brightness_q15(q15_t mag_q15, q15_t max_mag) {
     if (max_mag == 0) return 0; // avoid divide by 0
     uint16_t abs_mag = (mag_q15 < 0) ? -mag_q15 : mag_q15; // abs_mag: 0.0 to 1.0
-    // abs_mag = __SSAT(abs_mag << 2, 16);  // shift left to boost signal (x2)
     uint32_t scaled = ((uint32_t)abs_mag << 15) / max_mag;  // Now scaled from 0 to 32767
-    if (scaled > 32767) scaled = 32767;
     uint8_t index = (scaled * (LUT_SIZE - 1)) >> 15;  // scale 0 to LUT_SIZE
     return log_lut[index]; // Return the associated brightness (from Look-up table) }
 }
 
 // Set bar levels based on new brightness and return updated brightness
-uint8_t Set_Bar_Levels(int8_t new_brightness, uint8_t bar_idx) {
+uint8_t Set_Bar_Levels(uint8_t new_brightness, uint8_t bar_idx) {
     uint16_t new_brightness_q = ((uint16_t)new_brightness) << DECAY_SHIFT; // Convert to fixed-point
     uint16_t current_level_q = led_bar_levels_q[bar_idx];
     // Apply a "peak hold + decay" behavior
@@ -186,7 +185,7 @@ uint8_t Set_Bar_Levels(int8_t new_brightness, uint8_t bar_idx) {
     }    
 
     led_bar_levels_q[bar_idx] = current_level_q; // Update led_bar_levels[]
-    new_brightness = (uint8_t)(led_bar_levels_q[bar_idx] >> DECAY_SHIFT); // Convert back to normal 8-bit brightness
+    new_brightness = (uint8_t)(current_level_q >> DECAY_SHIFT); // Convert back to normal 8-bit brightness
 
     return new_brightness;
 }

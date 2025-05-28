@@ -156,4 +156,12 @@
 -I believe its the log_lut[] fault again
 -Updated log_lut[] and now there is an underflow problem and I dont know where it is
 -log_lut[] approach is definitely not reliable, gotta address that tomorrow and potentially replace the method.
-*** TODO: +address the log_lut[] mapping approach
+
+
+### Day 16
+-Tried to normalize with max average magnitude of each bins.
+-Its not working
+-Fixed the underflow problem, Set_Bar_Levels() took an uint8_t but interpreted it as int8_t, causing negative values
+-Implement Normalize_FFT_Value() to normalize each magnitude relative to the max magnitude
+-Changed brightness decay to 40 (x10 times) much better this way.
+*** TODO: Address the log_lut[]
