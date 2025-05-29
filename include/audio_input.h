@@ -7,7 +7,6 @@
 
 // Function prototypes
 void ADC1_Init();
-uint16_t ADC1_Read();
 void ADC_Buf_Process(uint8_t half);
 void DMA1_Channel1_IRQHandler();
 

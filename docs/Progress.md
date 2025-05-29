@@ -165,3 +165,16 @@
 -Implement Normalize_FFT_Value() to normalize each magnitude relative to the max magnitude
 -Changed brightness decay to 40 (x10 times) much better this way.
 *** TODO: Address the log_lut[]
+
+
+### Day 17
+-Used online C compiler to generate accurate log_lut[], but its too bright now.
+-Implemted alternating vertial bar's bottom to solder strip onto board.
+-Switching to INMP441 is going to be quite lots of work.
+-Tomorrow I will start soldering the led strip onto the board.
+*** TODO: 1. Setup SPI2 (receive-only master mode)
+          2. Set up DMA for SPI2 RX
+          3. Configure it to capture audio from INMP441 at 44.1 kHz (approx.)
+          4. Configure Clock for SPI2 to Generate BCLK
+          5. Update FFT Input
+          

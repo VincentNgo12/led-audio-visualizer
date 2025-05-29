@@ -14,6 +14,8 @@ volatile bool pwm_ready = false; // DMA1 Channel 3 Interupt flag
 static uint16_t hue_offset_q = 0; // Hue offset for LED colors (Q4.4)
 #define FRACTION_SHIFT 4 // (To implement Q4.4)
 
+
+
 /*======================================================
   Code to initialize LED (Setup PWM with TIM3 and DMA)
 ======================================================*/
@@ -104,7 +106,17 @@ void Update_Led_Colors(void) {
         // Update led_colors[] for current bar
         uint16_t led_idx_start = bar * LEDS_PER_BAR;
         for (uint16_t i = 0; i < LEDS_PER_BAR; i++) {
-            uint16_t index = led_idx_start + i;
+            uint16_t index; // Led index of current bar
+            // uint16_t index = led_idx_start + i;
+            // ***Alternating vertical bars
+            if (bar % 2 == 0) {
+                // Even bar: bottom to top
+                index = led_idx_start + i; 
+            } else {
+                // Odd bar: top to bottom (reverse)
+                index = led_idx_start + (LEDS_PER_BAR - 1 - i);
+            }
+
             uint8_t hue_offset = (uint8_t)(hue_offset_q >> FRACTION_SHIFT);
             uint8_t hue = ((i * 150) / LEDS_PER_BAR + hue_offset) & 0xFF; // Maps to hue range 0–255 
             uint8_t r, g, b;
@@ -194,7 +206,8 @@ uint8_t Set_Bar_Levels(uint8_t new_brightness, uint8_t bar_idx) {
 uint16_t Get_Bar_Height(uint8_t brightness) {
     if (brightness == 0) return 0;
 
-    uint16_t height = (brightness * LEDS_PER_BAR) / (LED_MAX_BRIGHTNESS);
+    uint16_t brightness_biased = brightness + 0; // Add some bias value to the brightness
+    uint16_t height = (brightness_biased * LEDS_PER_BAR) / (LED_MAX_BRIGHTNESS);
 
     return height;
 }

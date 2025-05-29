@@ -8,6 +8,16 @@ volatile uint16_t adc_buf[ADC_BUF_LEN] __attribute__((aligned(4)));
 volatile bool adc_buf_half_ready = false; //adc_buf[] half Interupt Flag
 volatile bool adc_buf_full_ready = false; //adc_buf[] full Interupt Flag
 
+
+
+/*=====================================================================
+***********************************************************************
+    This function is used to initialized ADC1 Channel 0 (PA0) along with
+    DMA1 Channel 1 in order to capture and store signal with MAX4466
+    module. Now I need to switch to using INMP441 but still I want to
+    keep these code in case for later uses.
+***********************************************************************
+======================================================================*/
 void ADC1_Init(){
     /*====================================
         We will use TIM2 to trigger ADC1
@@ -69,7 +79,7 @@ void ADC1_Init(){
 
     /*====================================
         Code to initialize DMA1 Channel 1
-        to transfer ADC0_IN0 conversions
+        to transfer ADC1_IN0 conversions
         to adc_buf
     ====================================*/
     // Enable DMA1 clock
@@ -105,15 +115,6 @@ void ADC1_Init(){
     FFT_Init();
 }
 
-/*=======================
-  ADC1 Input Processings
-========================*/
-//Get ADC1 Input
-uint16_t ADC1_Read()
-{
-    while (!(ADC1->SR & ADC_SR_EOC)); // Wait for conversion complete
-    return ADC1->DR;
-}
 
 
 //Process ADC1 Input
