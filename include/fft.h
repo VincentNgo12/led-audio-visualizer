@@ -7,7 +7,7 @@
 
 // Function Prototypes
 void FFT_Init(void);
-void FFT_Process(const volatile uint16_t *adc_buf);
+void FFT_Process(const volatile uint16_t *adc_buf, uint8_t INMP441);
 q15_t Normalize_FFT_Value(q15_t val, q15_t peak_val);
 
 // Constants

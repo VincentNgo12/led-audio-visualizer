@@ -12,12 +12,21 @@ void FFT_Init(void) {
     fft_config = &arm_cfft_sR_q15_len512;
 }
 
-void FFT_Process(const volatile uint16_t *adc_buf) {
-    // Step 1: Convert ADC data to Q15 format (centered around zero)
-    for (int i = 0; i < FFT_SIZE; i++) {
-        int16_t centered = ((int16_t)adc_buf[i]) - ADC_OFFSET; // 12-bit centered
-        fft_input[2 * i]     = (q15_t)(centered << 3);   // Q15 scaling
-        fft_input[2 * i + 1] = 0;                        // Every Imag part = 0
+void FFT_Process(const volatile uint16_t *signal_buf, uint8_t use_INMP441) {
+    if (use_INMP441){
+        // Step 1 (for INMP441): Convert signed 16-bit PCM to Q15 format
+        for (int i = 0; i < FFT_SIZE; i++) {
+            int16_t sample = (int16_t)signal_buf[i]; // already signed 16-bit
+            fft_input[2 * i]     = sample;           // Q15 input (real)
+            fft_input[2 * i + 1] = 0;                // Imaginary = 0
+        }
+    } else{
+        // Step 1 (for MAX4466): Convert ADC data to Q15 format (centered around zero)
+        for (int i = 0; i < FFT_SIZE; i++) {
+            int16_t centered = ((int16_t)signal_buf[i]) - ADC_OFFSET; // 12-bit centered
+            fft_input[2 * i]     = (q15_t)(centered << 3);   // Q15 scaling
+            fft_input[2 * i + 1] = 0;                        // Every Imag part = 0
+        }
     }
 
     // Step 2: Perform in-place FFT

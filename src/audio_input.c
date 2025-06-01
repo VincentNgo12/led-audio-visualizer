@@ -4,10 +4,95 @@
 #include "fft.h"
 #include "stdint.h"
 
-volatile uint16_t adc_buf[ADC_BUF_LEN] __attribute__((aligned(4)));
-volatile bool adc_buf_half_ready = false; //adc_buf[] half Interupt Flag
-volatile bool adc_buf_full_ready = false; //adc_buf[] full Interupt Flag
+volatile uint16_t dma_buf[SIGNAL_BUF_LEN * 2]; // Store raw INMP441 SPI2 readings (use two 16-bit slots per INMP441's 24-bit data)
+volatile uint16_t signal_buf[SIGNAL_BUF_LEN] __attribute__((aligned(4))); // Stores processed INMP441's signal
+volatile bool signal_buf_half_ready = false; //adc_buf[] half Interupt Flag
+volatile bool signal_buf_full_ready = false; //adc_buf[] full Interupt Flag
 
+
+/*=====================================================================
+***********************************************************************
+    This function is used to initialized SPI2 for INMP441 along with
+    DMA1 Channel 4 in order to capture and store signal with INMP441
+***********************************************************************
+======================================================================*/
+void INMP441_Init(){
+    /*====================================
+       Code to initialize SPI2 (Mimics I2S) 
+    ====================================*/
+    // ===== Enable Clocks =====
+    RCC->APB1ENR |= RCC_APB1ENR_SPI2EN;     // Enable SPI2 clock
+    RCC->APB2ENR |= RCC_APB2ENR_IOPBEN;     // Enable GPIOB clock
+    RCC->AHBENR  |= RCC_AHBENR_DMA1EN;      // Enable DMA1 clock
+
+    // ===== Configure PB13 (SCK), PB15 (MOSI as input), PB12 (WS/LRCK) =====
+    // Set PB13 (SCK) as AF output push-pull, 50 MHz
+    GPIOB->CRH &= ~(GPIO_CRH_MODE13 | GPIO_CRH_CNF13);
+    GPIOB->CRH |= (GPIO_CRH_MODE13_1 | GPIO_CRH_MODE13_0); // Output 50 MHz
+    GPIOB->CRH |= GPIO_CRH_CNF13_1; // AF Push-Pull
+
+    // Set PB15 (MOSI/SD) as input floating
+    GPIOB->CRH &= ~(GPIO_CRH_MODE15 | GPIO_CRH_CNF15);
+    GPIOB->CRH |= GPIO_CRH_CNF15_0; // Input floating
+
+    // Set PB12 (WS/LRCK) as output push-pull (used for WS if manually toggled)
+    GPIOB->CRH &= ~(GPIO_CRH_MODE12 | GPIO_CRH_CNF12);
+    GPIOB->CRH |= GPIO_CRH_MODE12_1 | GPIO_CRH_MODE12_0; // Output 50 MHz
+    GPIOB->CRH |= 0 << GPIO_CRH_CNF12_Pos; // General purpose push-pull
+
+    // ===== SPI2 Configuration =====
+    SPI2->CR1 = 0;                 // Disable SPI2 first
+    SPI2->CR1 |= SPI_CR1_MSTR;     // Master mode
+    SPI2->CR1 |= SPI_CR1_BR_1;     // Baud Rate = fPCLK / 8 = 72MHz / 8 = 9 MHz (for 2.822 MHz BCLK or 44.1 kHz × 2 channels × 32 bits)
+    // SPI2->CR1 |= SPI_CR1_RXONLY;   // Receive only mode
+    SPI2->CR1 |= SPI_CR1_SSM | SPI_CR1_SSI; // Software NSS management
+    SPI2->CR1 |= SPI_CR1_DFF;      // 16-bit data frame (Handle INMP441's 24-bit manually)
+    SPI2->CR2 |= SPI_CR2_RXDMAEN;  // Enable DMA for RX
+
+
+    /*====================================
+        Code to initialize DMA1 Channel 4
+        to transfer SPI2 serial data
+        to signal_buf
+    ====================================*/
+    // ===== Configure DMA1 Channel 4 (SPI2_RX) =====
+    DMA1_Channel4->CCR = 0;
+    DMA1_Channel4->CPAR = (uint32_t)&SPI2->DR;    // Peripheral Address (SPI2 serial data)
+    DMA1_Channel4->CMAR = (uint32_t)signal_buf;   // Memory Address (signal_buf array)
+    DMA1_Channel4->CNDTR = SIGNAL_BUF_LEN;        // signal_buf[] size
+
+    DMA1_Channel4->CCR =
+          DMA_CCR_MINC        // Memory increment mode
+        | DMA_CCR_PSIZE_0     // Peripheral size 16-bit
+        | DMA_CCR_MSIZE_0     // Memory size 16-bit 
+        | DMA_CCR_CIRC        // Circular mode
+        | DMA_CCR_HTIE        // Half transfer interrupt
+        | DMA_CCR_TCIE        // Transfer complete interrupt
+        | DMA_CCR_EN;         // Enable DMA
+
+    DMA1->IFCR |= DMA_IFCR_CTCIF1 | DMA_IFCR_CHTIF1 | DMA_IFCR_CTEIF1; //Clear DMA flag before enable IRQ
+    NVIC_EnableIRQ(DMA1_Channel4_IRQn); // Enable interrupt in NVIC
+
+    // ===== Enable SPI2 =====
+    SPI2->CR1 |= SPI_CR1_SPE; // Enable SPI2
+}
+
+
+
+// Post-process DMA buffer to get 24-bit audio data into signal_buf[]
+void Process_DMA_Buffer(uint8_t half) {
+    // Double dma_buf implementation: Process each half at a time.
+    volatile uint16_t dma_index = (half == 0) ? 0 : SIGNAL_BUF_LEN;
+    volatile uint16_t signal_index = (half == 0) ? 0 : (SIGNAL_BUF_LEN/2);
+
+    for (int i = dma_index; i < SIGNAL_BUF_LEN + dma_index; i+=2) {
+        uint16_t first16 = dma_buf[i]; // First SPI read (D23-D8)
+        uint16_t second16 = dma_buf[i+1];        // Second SPI read (D7-D0 + padding)
+        int32_t sample24 = ((int32_t)(first16 << 8) | (second16 >> 8));
+        if (sample24 & 0x800000) sample24 |= 0xFF000000; // sign-extend
+        signal_buf[signal_index++] = sample24 >> 8; // convert to int16_t
+    }
+}
 
 
 /*=====================================================================
@@ -76,11 +161,10 @@ void ADC1_Init(){
 
 
 
-
     /*====================================
         Code to initialize DMA1 Channel 1
         to transfer ADC1_IN0 conversions
-        to adc_buf
+        to signal_buf
     ====================================*/
     // Enable DMA1 clock
     RCC->AHBENR |= RCC_AHBENR_DMA1EN;
@@ -88,8 +172,8 @@ void ADC1_Init(){
 
     // Configure DMA1 Channel1
     DMA1_Channel1->CPAR = (uint32_t)&ADC1->DR;         // Peripheral address (ADC1 conversions)
-    DMA1_Channel1->CMAR = (uint32_t)adc_buf;           // Memory address (adc_buf array)
-    DMA1_Channel1->CNDTR = ADC_BUF_LEN;                // Number of data to transfer
+    DMA1_Channel1->CMAR = (uint32_t)signal_buf;           // Memory address (signal_buf array)
+    DMA1_Channel1->CNDTR = SIGNAL_BUF_LEN;                // Number of data to transfer
 
     DMA1_Channel1->CCR =
           DMA_CCR_MINC       // Memory increment mode
@@ -117,13 +201,15 @@ void ADC1_Init(){
 
 
 
-//Process ADC1 Input
-void ADC_Buf_Process(uint8_t half){
-    // Double adc_buf implementation: Process each half at a time.
-    volatile uint16_t* buf_ptr = (half == 0) ? &adc_buf[0] : &adc_buf[ADC_BUF_LEN / 2];
+//Process audio signal
+void Signal_Buf_Process(uint8_t half){
+    Process_DMA_Buffer(half); // Process raw dma_buf[] data
+
+    // Double signal_buf implementation: Process each half at a time.
+    volatile uint16_t* buf_ptr = (half == 0) ? &signal_buf[0] : &signal_buf[SIGNAL_BUF_LEN / 2];
 
     // Perform FFT on half of the adc_buf[] 
-    FFT_Process(buf_ptr);
+    FFT_Process(buf_ptr, USE_INMP441);
 
     Update_Led_Colors(); // Update LED strip color data (led_colors[])
     Encode_Led_Data(); // Apply LED strip update
@@ -137,12 +223,28 @@ void DMA1_Channel1_IRQHandler()
 {
     if (DMA1->ISR & DMA_ISR_HTIF1) {
         DMA1->IFCR |= DMA_IFCR_CHTIF1;  // Clear half transfer flag
-        adc_buf_half_ready = true; //Signal main loop
+        signal_buf_half_ready = true; //Signal main loop
     }
 
     if (DMA1->ISR & DMA_ISR_TCIF1) {
         DMA1->IFCR |= DMA_IFCR_CTCIF1;  // Clear transfer complete flag
-        adc_buf_full_ready = true; //Signal main loop
+        signal_buf_full_ready = true; //Signal main loop
     }
 }
 
+
+/*====================================
+    DMA1 Channel 4 Interupt Handler
+  ====================================*/
+void DMA1_Channel4_IRQHandler()
+{
+    if (DMA1->ISR & DMA_ISR_HTIF1) {
+        DMA1->IFCR |= DMA_IFCR_CHTIF1;  // Clear half transfer flag
+        signal_buf_half_ready = true; //Signal main loop
+    }
+
+    if (DMA1->ISR & DMA_ISR_TCIF1) {
+        DMA1->IFCR |= DMA_IFCR_CTCIF1;  // Clear transfer complete flag
+        signal_buf_full_ready = true; //Signal main loop
+    }
+}

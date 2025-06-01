@@ -177,4 +177,30 @@
           3. Configure it to capture audio from INMP441 at 44.1 kHz (approx.)
           4. Configure Clock for SPI2 to Generate BCLK
           5. Update FFT Input
-          
+
+
+### Day 18
+-Started building the led visualizer board.
+-Found a very perfect 27x15.9 cm wooden board fit perfectly for my 5m IP30 led strip.
+-Soldering part was painful, messed up one strip but learned experience for the other strips instead.
+-That broken strip will be replaced later on.
+
+
+
+### Day 19
+-Start switching to the INMP441 digital microphone.
+-renamed all ADC and signal components.
+-Copied code for SPI2 and DMA1 Channel 4 Initialization.
+-However, still need to address the SPI2 baud rate and reading INMP441's 24-bit data with SPI2's 16-bit.
+-Also find out if we need to control the WS pin.
+-Need to create dma_buf[] and DMA_Buf_Process() to process dma reads into 24-bit audio data in signal_buf[]
+-Need to also reimplement the double buffer thing.
+-Need to check fft.c again to ensure compatibality with new audio data
+-First try seems to work but the leds light up all over the place randomly. Need to start debugging to see if INMP441 is working correctly.
+-Yeah, I forget to use SPI2 amd DMA1 channel 4 instead of ADC1...
+-main.c also freezes somewhere...
+-It freezes as soon as SPI2 is enabled
+-Removing the line SPI2->CR1 |= SPI_CR1_RXONLY; fixes the issue.
+-Now it freezing becasue the signal_buf[] is not raising any flags.
+-I can fix this but its late now so tomorrow...
+*** TODO: check signal_buf[] flag
