@@ -4,7 +4,7 @@
 #include "fft.h"
 #include "stdint.h"
 
-volatile uint16_t dma_buf[SIGNAL_BUF_LEN * 2]; // Store raw INMP441 SPI2 readings (use two 16-bit slots per INMP441's 24-bit data)
+volatile uint16_t dma_buf[DMA_BUF_LEN]; // Store raw INMP441 SPI2 readings (use two 16-bit slots per INMP441's 24-bit data)
 volatile uint16_t signal_buf[SIGNAL_BUF_LEN] __attribute__((aligned(4))); // Stores processed INMP441's signal
 volatile bool signal_buf_half_ready = false; //adc_buf[] half Interupt Flag
 volatile bool signal_buf_full_ready = false; //adc_buf[] full Interupt Flag
@@ -58,8 +58,8 @@ void INMP441_Init(){
     // ===== Configure DMA1 Channel 4 (SPI2_RX) =====
     DMA1_Channel4->CCR = 0;
     DMA1_Channel4->CPAR = (uint32_t)&SPI2->DR;    // Peripheral Address (SPI2 serial data)
-    DMA1_Channel4->CMAR = (uint32_t)signal_buf;   // Memory Address (signal_buf array)
-    DMA1_Channel4->CNDTR = SIGNAL_BUF_LEN;        // signal_buf[] size
+    DMA1_Channel4->CMAR = (uint32_t)dma_buf;   // Memory Address (signal_buf array)
+    DMA1_Channel4->CNDTR = DMA_BUF_LEN;        // dma_buf[] size
 
     DMA1_Channel4->CCR =
           DMA_CCR_MINC        // Memory increment mode
@@ -70,7 +70,7 @@ void INMP441_Init(){
         | DMA_CCR_TCIE        // Transfer complete interrupt
         | DMA_CCR_EN;         // Enable DMA
 
-    DMA1->IFCR |= DMA_IFCR_CTCIF1 | DMA_IFCR_CHTIF1 | DMA_IFCR_CTEIF1; //Clear DMA flag before enable IRQ
+    DMA1->IFCR |= DMA_IFCR_CTCIF4 | DMA_IFCR_CHTIF4 | DMA_IFCR_CTEIF4; //Clear DMA flag before enable IRQ
     NVIC_EnableIRQ(DMA1_Channel4_IRQn); // Enable interrupt in NVIC
 
     // ===== Enable SPI2 =====
@@ -238,13 +238,13 @@ void DMA1_Channel1_IRQHandler()
   ====================================*/
 void DMA1_Channel4_IRQHandler()
 {
-    if (DMA1->ISR & DMA_ISR_HTIF1) {
-        DMA1->IFCR |= DMA_IFCR_CHTIF1;  // Clear half transfer flag
+    if (DMA1->ISR & DMA_ISR_HTIF4) {
+        DMA1->IFCR |= DMA_IFCR_CHTIF4;  // Clear half transfer flag
         signal_buf_half_ready = true; //Signal main loop
     }
 
-    if (DMA1->ISR & DMA_ISR_TCIF1) {
-        DMA1->IFCR |= DMA_IFCR_CTCIF1;  // Clear transfer complete flag
+    if (DMA1->ISR & DMA_ISR_TCIF4) {
+        DMA1->IFCR |= DMA_IFCR_CTCIF4;  // Clear transfer complete flag
         signal_buf_full_ready = true; //Signal main loop
     }
 }

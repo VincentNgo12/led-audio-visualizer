@@ -20,8 +20,9 @@ volatile bool signal_buf_full_ready;
 // Constants
 #define USE_INMP441 1u // 1 if INMP441, 0 if MAX4466 is used.
 #define SIGNAL_BUF_LEN (FFT_SIZE*2) // Double buffer for adc_buf[]
+#define DMA_BUF_LEN (SIGNAL_BUF_LEN*2)
 #define ADC_OFFSET 2048u // The baseline offset value for MAX4466
-volatile uint16_t dma_buf[SIGNAL_BUF_LEN * 2]; // (*2 Length when using INMP441 since it send 24-bit data
+volatile uint16_t dma_buf[DMA_BUF_LEN]; // (*2 Length when using INMP441 since it send 24-bit data
                                                          //  so need to do two 16-bit reads on SPI2)
 extern volatile uint16_t signal_buf[SIGNAL_BUF_LEN]; 
 

@@ -204,3 +204,14 @@
 -Now it freezing becasue the signal_buf[] is not raising any flags.
 -I can fix this but its late now so tomorrow...
 *** TODO: check signal_buf[] flag
+
+
+### Day 20
+-Debug signal_buf[] flag again
+-Turns out DMA1_Channel4_IRQHandler() was checking DMA1 Channel 1 flag the whole time.
+-Didn't fix it actually, the programm never reach DMA1_Channel4_IRQHandler() at all.
+-I forget to set the DMA1 Channel 4 memory address from signal_buf[] to dma_buf[]
+-Still no data is being trasnfered into dma_buf[]
+-THe line  // SPI2->CR1 |= SPI_CR1_RXONLY;   // Receive only mode is the root of the problem. Removing it save the program from freezing but now there is no DMA activity.
+-Will address this tomorrow, I gotta solder the LED board today.
+*** TODO: Address the SPI2 receive only mode
