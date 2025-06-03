@@ -4,7 +4,7 @@
 #include "fft.h"
 #include "stdint.h"
 
-volatile uint16_t dma_buf[DMA_BUF_LEN]; // Store raw INMP441 SPI2 readings (use two 16-bit slots per INMP441's 24-bit data)
+volatile uint16_t dma_buf[DMA_BUF_LEN] __attribute__((aligned(4)));// Store raw INMP441 SPI2 readings (use two 16-bit slots per INMP441's 24-bit data)
 volatile uint16_t signal_buf[SIGNAL_BUF_LEN] __attribute__((aligned(4))); // Stores processed INMP441's signal
 volatile bool signal_buf_half_ready = false; //adc_buf[] half Interupt Flag
 volatile bool signal_buf_full_ready = false; //adc_buf[] full Interupt Flag
@@ -44,10 +44,9 @@ void INMP441_Init(){
     SPI2->CR1 = 0;                 // Disable SPI2 first
     SPI2->CR1 |= SPI_CR1_MSTR;     // Master mode
     SPI2->CR1 |= SPI_CR1_BR_1;     // Baud Rate = fPCLK / 8 = 72MHz / 8 = 9 MHz (for 2.822 MHz BCLK or 44.1 kHz × 2 channels × 32 bits)
-    // SPI2->CR1 |= SPI_CR1_RXONLY;   // Receive only mode
     SPI2->CR1 |= SPI_CR1_SSM | SPI_CR1_SSI; // Software NSS management
     SPI2->CR1 |= SPI_CR1_DFF;      // 16-bit data frame (Handle INMP441's 24-bit manually)
-    SPI2->CR2 |= SPI_CR2_RXDMAEN;  // Enable DMA for RX
+    SPI2->CR2 |= SPI_CR2_RXDMAEN | SPI_CR2_TXDMAEN; // Enable DMA for RX and TX
 
 
     /*====================================
@@ -58,7 +57,7 @@ void INMP441_Init(){
     // ===== Configure DMA1 Channel 4 (SPI2_RX) =====
     DMA1_Channel4->CCR = 0;
     DMA1_Channel4->CPAR = (uint32_t)&SPI2->DR;    // Peripheral Address (SPI2 serial data)
-    DMA1_Channel4->CMAR = (uint32_t)dma_buf;   // Memory Address (signal_buf array)
+    DMA1_Channel4->CMAR = (uint32_t)dma_buf;   // Memory Address (dma_buf array)
     DMA1_Channel4->CNDTR = DMA_BUF_LEN;        // dma_buf[] size
 
     DMA1_Channel4->CCR =
@@ -73,8 +72,34 @@ void INMP441_Init(){
     DMA1->IFCR |= DMA_IFCR_CTCIF4 | DMA_IFCR_CHTIF4 | DMA_IFCR_CTEIF4; //Clear DMA flag before enable IRQ
     NVIC_EnableIRQ(DMA1_Channel4_IRQn); // Enable interrupt in NVIC
 
+
+    /*============================================================
+        Code to initialize DMA1 Channel 5, since SPI2 is not in
+        RXONLY mode, we must transmit a dummy value to SPI2->DR
+        everytime we receive data in order to drive the SPI2 SCK
+        clock (so DMA1 Channel 4 can start transfering data).
+    ==============================================================*/
+    // ===== Configure DMA1 Channel 5 (SPI2_TX) =====
+    static uint16_t dummy_word = 0x0000;
+
+    DMA1_Channel5->CCR = 0;
+    DMA1_Channel5->CPAR = (uint32_t)&SPI2->DR;       // Peripheral = SPI2 data register
+    DMA1_Channel5->CMAR = (uint32_t)&dummy_word;     // Memory = dummy data (0x0000)
+    DMA1_Channel5->CNDTR = DMA_BUF_LEN;              // Same size as RX buffer
+    DMA1_Channel5->CCR =
+    DMA_CCR_DIR          | // Memory-to-peripheral
+    DMA_CCR_PSIZE_0      | // Peripheral size = 16-bit
+    DMA_CCR_MSIZE_0      | // Memory size = 16-bit
+    DMA_CCR_CIRC         | // Circular mode
+    DMA_CCR_EN;            // Enable DMA
+
+
     // ===== Enable SPI2 =====
     SPI2->CR1 |= SPI_CR1_SPE; // Enable SPI2
+
+
+    // Initialize FFT
+    FFT_Init();
 }
 
 
@@ -82,15 +107,16 @@ void INMP441_Init(){
 // Post-process DMA buffer to get 24-bit audio data into signal_buf[]
 void Process_DMA_Buffer(uint8_t half) {
     // Double dma_buf implementation: Process each half at a time.
-    volatile uint16_t dma_index = (half == 0) ? 0 : SIGNAL_BUF_LEN;
     volatile uint16_t signal_index = (half == 0) ? 0 : (SIGNAL_BUF_LEN/2);
+    volatile uint16_t dma_index = (half == 0) ? 0 : (DMA_BUF_LEN/2);
 
-    for (int i = dma_index; i < SIGNAL_BUF_LEN + dma_index; i+=2) {
-        uint16_t first16 = dma_buf[i]; // First SPI read (D23-D8)
-        uint16_t second16 = dma_buf[i+1];        // Second SPI read (D7-D0 + padding)
+    for (int i = 0; i < (SIGNAL_BUF_LEN/2); i++) {
+        uint16_t first16 = dma_buf[dma_index + 2*i]; // First SPI read (D23-D8)
+        uint16_t second16 = dma_buf[dma_index + 2*i + 1]; // Second SPI read (D7-D0 + padding)
         int32_t sample24 = ((int32_t)(first16 << 8) | (second16 >> 8));
         if (sample24 & 0x800000) sample24 |= 0xFF000000; // sign-extend
-        signal_buf[signal_index++] = sample24 >> 8; // convert to int16_t
+
+        signal_buf[signal_index + i] = sample24 >> 8; // convert to int16_t
     }
 }
 

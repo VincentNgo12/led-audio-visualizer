@@ -22,7 +22,6 @@ int main(void)
     INMP441_Init();
     LED_Init();
 
-
     while (1)
     {
         //GPIOC->ODR ^= (1 << LED_PIN);  // Toggle PC13

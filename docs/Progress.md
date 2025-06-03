@@ -215,3 +215,16 @@
 -THe line  // SPI2->CR1 |= SPI_CR1_RXONLY;   // Receive only mode is the root of the problem. Removing it save the program from freezing but now there is no DMA activity.
 -Will address this tomorrow, I gotta solder the LED board today.
 *** TODO: Address the SPI2 receive only mode
+
+
+### Day 21
+-Continue to debug INMP441 and SPI2.
+-Appearently I need to write dummy data into SPI2->DR everytime I receive data from INMP441 in order to drive the SPI2 SCK clock. This way, the DMA1 Channel 4 would start transfering data.
+-DMA1 Channel 4 is working fine now but INMP441 only outpts 0 constantly.
+-signal_buf[] and fft_output[] have mostly zero but also some random value here and there.
+-Something is writting grabage values to signal_buf[], Process_DMA_Buf() is working correctly...
+-The garbage values came from this line in fft.c: arm_cfft_q15(fft_config, fft_input, 0, 1);  // forward, bit-reversal enabled
+-******OMG, I never called FFT_Init() inside INMP441_Init(), this bug is a big pain in the bump! SOOO hard to catch!
+-Now I have to addrress why INMP441 always output 0 value.
+*** TODO: +Confirm SCK is 2.25 Mhz
+          +Toggle WS before reading
