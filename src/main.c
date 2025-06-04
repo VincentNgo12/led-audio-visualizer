@@ -19,6 +19,7 @@ int main(void)
     GPIOC->CRH |=  (0x1 << ((LED_PIN - 8) * 4));  // Set MODE13 to Output 10MHz
 
     SysTick_Init(); //Initialize SysTick
+    FFT_Init(); // Initialize FFT
     INMP441_Init();
     LED_Init();
 

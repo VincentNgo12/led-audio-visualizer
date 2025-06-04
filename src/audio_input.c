@@ -43,7 +43,7 @@ void INMP441_Init(){
     // ===== SPI2 Configuration =====
     SPI2->CR1 = 0;                 // Disable SPI2 first
     SPI2->CR1 |= SPI_CR1_MSTR;     // Master mode
-    SPI2->CR1 |= SPI_CR1_BR_1;     // Baud Rate = fPCLK / 8 = 72MHz / 8 = 9 MHz (for 2.822 MHz BCLK or 44.1 kHz × 2 channels × 32 bits)
+    SPI2->CR1 |= SPI_CR1_BR_2;     // Baud Rate = 72MHz / 32 = 2.25 MHz (for 2.25 MHz BCLK or 35.1 kHz × 2 channels × 32 bits)
     SPI2->CR1 |= SPI_CR1_SSM | SPI_CR1_SSI; // Software NSS management
     SPI2->CR1 |= SPI_CR1_DFF;      // 16-bit data frame (Handle INMP441's 24-bit manually)
     SPI2->CR2 |= SPI_CR2_RXDMAEN | SPI_CR2_TXDMAEN; // Enable DMA for RX and TX
@@ -94,12 +94,45 @@ void INMP441_Init(){
     DMA_CCR_EN;            // Enable DMA
 
 
+
+    /*====================================
+        Code to initialize TIM2 to generate
+        WS signal at 35.156 Khz
+    ====================================*/
+    // ===== Configure TIM_2_CH2 (PA1) =====
+    RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;   // Enable TIM2
+    RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;   // Enable GPIOA for PA1 output
+
+    GPIOA->CRL &= ~(GPIO_CRL_MODE1 | GPIO_CRL_CNF1);
+    GPIOA->CRL |= GPIO_CRL_MODE1_1 | GPIO_CRL_MODE1_0; // Output mode, 50 MHz
+    GPIOA->CRL |= GPIO_CRL_CNF1_1; // Alternate Function Push-Pull
+
+    // --- Configure TIM2 for PWM at ~35.15625 kHz ---
+    // Timer clock = 72 MHz
+    // Want timer frequency = 35.15625 kHz
+    // Choose: Prescaler = 0, ARR = 2047
+    // 72 MHz / (2048) = 35156.25 Hz
+
+    TIM2->PSC = 0;        // No prescaler
+    TIM2->ARR = 2047;     // Auto-reload for 35.15625 kHz
+    TIM2->CCR2 = 1024;    // 50% duty cycle (half of ARR)
+
+    // --- Set PWM mode on Channel 2 ---
+    TIM2->CCMR1 &= ~TIM_CCMR1_OC2M;
+    TIM2->CCMR1 |= (6 << TIM_CCMR1_OC2M_Pos);  // PWM mode 1
+    TIM2->CCMR1 |= TIM_CCMR1_OC2PE;            // Enable preload
+
+    // --- Enable Channel 2 output ---
+    TIM2->CCER |= TIM_CCER_CC2E;
+
+    // --- Enable auto-reload preload and start timer ---
+    TIM2->CR1 |= TIM_CR1_ARPE;
+    TIM2->EGR |= TIM_EGR_UG;      // Generate update event
+    TIM2->CR1 |= TIM_CR1_CEN;     // Start timer
+
+
     // ===== Enable SPI2 =====
     SPI2->CR1 |= SPI_CR1_SPE; // Enable SPI2
-
-
-    // Initialize FFT
-    FFT_Init();
 }
 
 
@@ -219,10 +252,6 @@ void ADC1_Init(){
     DMA1_Channel1->CCR |= DMA_CCR_TCIE;  // Transfer Complete Interrupt
     DMA1_Channel1->CCR |= DMA_CCR_HTIE;  // Half Transfer Interrupt
     NVIC_EnableIRQ(DMA1_Channel1_IRQn);
-
-
-    // Initialize FFT
-    FFT_Init();
 }
 
 

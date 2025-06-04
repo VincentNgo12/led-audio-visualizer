@@ -228,3 +228,14 @@
 -Now I have to addrress why INMP441 always output 0 value.
 *** TODO: +Confirm SCK is 2.25 Mhz
           +Toggle WS before reading
+
+
+### Day 22
+-Tested with the oscilloscope, INMP441's power supply is good, WS is always low, and SCK is ticking at 225 ns ().
+-Edit so SCK now tick at 2.25 Mhz, resulting in 35.1 kHz sample rate. I can accept missing some of the high-end frequencies.
+-Setup TIM2 Channel 2 (PA1) to drive WS at 35.1 Khz.
+-SPI2->DR is transfering values now but I'm really not sure if they are correct.
+-signal_buf[] is filled with zeros if I blow into INMP441, this is not normal...
+-So those values in dma_buf[] must be garbage values...
+-Definitely need to address this tomrrow but I need to work on the LED board now.
+*** TODO: Check if INMP441 is correctly sampling left channel
