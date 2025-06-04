@@ -7,6 +7,7 @@
 
 // Function prototypes
 void ADC1_Init();
+void TIM1_WS_SCK_Init();
 void INMP441_Init();
 void DMA_Buf_Process(uint8_t half); // Post-process DMA buffer to get 24-bit audio
 void Signal_Buf_Process(uint8_t half);

@@ -24,42 +24,37 @@ void INMP441_Init(){
     RCC->APB1ENR |= RCC_APB1ENR_SPI2EN;     // Enable SPI2 clock
     RCC->APB2ENR |= RCC_APB2ENR_IOPBEN;     // Enable GPIOB clock
     RCC->AHBENR  |= RCC_AHBENR_DMA1EN;      // Enable DMA1 clock
-
-    // ===== Configure PB13 (SCK), PB15 (MOSI as input), PB12 (WS/LRCK) =====
-    // Set PB13 (SCK) as AF output push-pull, 50 MHz
+    
+    // ===== GPIO Configuration =====
+    // PB13 - SPI2_SCK (input floating)
     GPIOB->CRH &= ~(GPIO_CRH_MODE13 | GPIO_CRH_CNF13);
-    GPIOB->CRH |= (GPIO_CRH_MODE13_1 | GPIO_CRH_MODE13_0); // Output 50 MHz
-    GPIOB->CRH |= GPIO_CRH_CNF13_1; // AF Push-Pull
+    GPIOB->CRH |= GPIO_CRH_CNF13_0; // Input floating
 
-    // Set PB15 (MOSI/SD) as input floating
+    // PB15 - SPI2_MOSI (I2S SD from INMP441)
     GPIOB->CRH &= ~(GPIO_CRH_MODE15 | GPIO_CRH_CNF15);
     GPIOB->CRH |= GPIO_CRH_CNF15_0; // Input floating
 
-    // Set PB12 (WS/LRCK) as output push-pull (used for WS if manually toggled)
-    GPIOB->CRH &= ~(GPIO_CRH_MODE12 | GPIO_CRH_CNF12);
-    GPIOB->CRH |= GPIO_CRH_MODE12_1 | GPIO_CRH_MODE12_0; // Output 50 MHz
-    GPIOB->CRH |= 0 << GPIO_CRH_CNF12_Pos; // General purpose push-pull
+    // ===== SPI2 Configuration (slave mode) =====
+    SPI2->CR1 &= ~SPI_CR1_MSTR;       // Slave mode
+    SPI2->CR1 |= SPI_CR1_DFF;         // 16-bit data frame (read 2 words per sample)
+    SPI2->CR1 &= ~SPI_CR1_CPOL;       // Clock polarity (CPOL = 0)
+    SPI2->CR1 &= ~SPI_CR1_CPHA;       // Clock phase    (CPHA = 0)
+    SPI2->CR1 &= ~SPI_CR1_SSM;        // Hardware NSS (not used here)
 
-    // ===== SPI2 Configuration =====
-    SPI2->CR1 = 0;                 // Disable SPI2 first
-    SPI2->CR1 |= SPI_CR1_MSTR;     // Master mode
-    SPI2->CR1 |= SPI_CR1_BR_2;     // Baud Rate = 72MHz / 32 = 2.25 MHz (for 2.25 MHz BCLK or 35.1 kHz × 2 channels × 32 bits)
-    SPI2->CR1 |= SPI_CR1_SSM | SPI_CR1_SSI; // Software NSS management
-    SPI2->CR1 |= SPI_CR1_DFF;      // 16-bit data frame (Handle INMP441's 24-bit manually)
-    SPI2->CR2 |= SPI_CR2_RXDMAEN | SPI_CR2_TXDMAEN; // Enable DMA for RX and TX
+    SPI2->CR2 |= SPI_CR2_RXDMAEN;     // Enable RX DMA only
 
 
     /*====================================
         Code to initialize DMA1 Channel 4
         to transfer SPI2 serial data
-        to signal_buf
+        to dma_buf
     ====================================*/
     // ===== Configure DMA1 Channel 4 (SPI2_RX) =====
     DMA1_Channel4->CCR = 0;
     DMA1_Channel4->CPAR = (uint32_t)&SPI2->DR;    // Peripheral Address (SPI2 serial data)
     DMA1_Channel4->CMAR = (uint32_t)dma_buf;   // Memory Address (dma_buf array)
     DMA1_Channel4->CNDTR = DMA_BUF_LEN;        // dma_buf[] size
-
+    
     DMA1_Channel4->CCR =
           DMA_CCR_MINC        // Memory increment mode
         | DMA_CCR_PSIZE_0     // Peripheral size 16-bit
@@ -72,69 +67,67 @@ void INMP441_Init(){
     DMA1->IFCR |= DMA_IFCR_CTCIF4 | DMA_IFCR_CHTIF4 | DMA_IFCR_CTEIF4; //Clear DMA flag before enable IRQ
     NVIC_EnableIRQ(DMA1_Channel4_IRQn); // Enable interrupt in NVIC
 
-
-    /*============================================================
-        Code to initialize DMA1 Channel 5, since SPI2 is not in
-        RXONLY mode, we must transmit a dummy value to SPI2->DR
-        everytime we receive data in order to drive the SPI2 SCK
-        clock (so DMA1 Channel 4 can start transfering data).
-    ==============================================================*/
-    // ===== Configure DMA1 Channel 5 (SPI2_TX) =====
-    static uint16_t dummy_word = 0x0000;
-
-    DMA1_Channel5->CCR = 0;
-    DMA1_Channel5->CPAR = (uint32_t)&SPI2->DR;       // Peripheral = SPI2 data register
-    DMA1_Channel5->CMAR = (uint32_t)&dummy_word;     // Memory = dummy data (0x0000)
-    DMA1_Channel5->CNDTR = DMA_BUF_LEN;              // Same size as RX buffer
-    DMA1_Channel5->CCR =
-    DMA_CCR_DIR          | // Memory-to-peripheral
-    DMA_CCR_PSIZE_0      | // Peripheral size = 16-bit
-    DMA_CCR_MSIZE_0      | // Memory size = 16-bit
-    DMA_CCR_CIRC         | // Circular mode
-    DMA_CCR_EN;            // Enable DMA
-
-
-
-    /*====================================
-        Code to initialize TIM2 to generate
-        WS signal at 35.156 Khz
-    ====================================*/
-    // ===== Configure TIM_2_CH2 (PA1) =====
-    RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;   // Enable TIM2
-    RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;   // Enable GPIOA for PA1 output
-
-    GPIOA->CRL &= ~(GPIO_CRL_MODE1 | GPIO_CRL_CNF1);
-    GPIOA->CRL |= GPIO_CRL_MODE1_1 | GPIO_CRL_MODE1_0; // Output mode, 50 MHz
-    GPIOA->CRL |= GPIO_CRL_CNF1_1; // Alternate Function Push-Pull
-
-    // --- Configure TIM2 for PWM at ~35.15625 kHz ---
-    // Timer clock = 72 MHz
-    // Want timer frequency = 35.15625 kHz
-    // Choose: Prescaler = 0, ARR = 2047
-    // 72 MHz / (2048) = 35156.25 Hz
-
-    TIM2->PSC = 0;        // No prescaler
-    TIM2->ARR = 2047;     // Auto-reload for 35.15625 kHz
-    TIM2->CCR2 = 1024;    // 50% duty cycle (half of ARR)
-
-    // --- Set PWM mode on Channel 2 ---
-    TIM2->CCMR1 &= ~TIM_CCMR1_OC2M;
-    TIM2->CCMR1 |= (6 << TIM_CCMR1_OC2M_Pos);  // PWM mode 1
-    TIM2->CCMR1 |= TIM_CCMR1_OC2PE;            // Enable preload
-
-    // --- Enable Channel 2 output ---
-    TIM2->CCER |= TIM_CCER_CC2E;
-
-    // --- Enable auto-reload preload and start timer ---
-    TIM2->CR1 |= TIM_CR1_ARPE;
-    TIM2->EGR |= TIM_EGR_UG;      // Generate update event
-    TIM2->CR1 |= TIM_CR1_CEN;     // Start timer
-
+    TIM1_WS_SCK_Init(); // Initialize TIM1 for SCK and WS signals
 
     // ===== Enable SPI2 =====
     SPI2->CR1 |= SPI_CR1_SPE; // Enable SPI2
 }
 
+
+/*=====================================================================
+***********************************************************************
+    This function is used to initialized TIM1 Channel 1 (PA8) and
+    Channel 2 (PA9). Channel 1 will generate SCK and Channel 2 will
+    generate WS for the INMP441 and SPI2 (slave mode)
+***********************************************************************
+======================================================================*/
+void TIM1_WS_SCK_Init(){
+    // === Enable Clocks ===
+    RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;    // Enable GPIOA
+    RCC->APB2ENR |= RCC_APB2ENR_AFIOEN;    // Enable AFIO
+    RCC->APB2ENR |= RCC_APB2ENR_TIM1EN;    // Enable TIM1
+
+    // === Configure PA8 (CH1 = SCK), PA9 (CH2 = WS) ===
+    GPIOA->CRH &= ~(GPIO_CRH_MODE8 | GPIO_CRH_CNF8 |
+                    GPIO_CRH_MODE9 | GPIO_CRH_CNF9);     // Clear configurations
+
+    GPIOA->CRH |= (GPIO_CRH_MODE8_1 | GPIO_CRH_MODE8_0); // PA8 = Output 50 MHz
+    GPIOA->CRH |= GPIO_CRH_CNF8_1;                       // AF Push-Pull
+
+    GPIOA->CRH |= (GPIO_CRH_MODE9_1 | GPIO_CRH_MODE9_0); // PA9 = Output 50 MHz
+    GPIOA->CRH |= GPIO_CRH_CNF9_1;                       // AF Push-Pull
+
+    // === TIM1 Base Config ===
+    TIM1->PSC = 0;         // Prescaler = 0 → 72 MHz
+    TIM1->ARR = 25 - 1;    // Auto-reload → 72 MHz / 25 = 2.88 MHz (SCK freq)
+
+    TIM1->RCR = 63;        // Repeat counter = 63 → update event every 64 pulses
+
+    // === CH1 = SCK: 50% duty PWM ===
+    TIM1->CCR1 = TIM1->ARR / 2; // 50% duty
+    TIM1->CCMR1 &= ~TIM_CCMR1_OC1M;
+    TIM1->CCMR1 |= (6 << TIM_CCMR1_OC1M_Pos); // PWM Mode 1
+    TIM1->CCMR1 |= TIM_CCMR1_OC1PE;           // Preload enable
+
+    // === CH2 = WS: Toggle every update event ===
+    TIM1->CCR2 = 1; // Ignored, since toggle mode
+    TIM1->CCMR1 &= ~TIM_CCMR1_OC2M;
+    TIM1->CCMR1 |= (3 << TIM_CCMR1_OC2M_Pos); // Force Toggle on match
+    TIM1->CCMR1 |= TIM_CCMR1_OC2PE;           // Preload enable
+
+    // === Enable Channels CH1 & CH2 ===
+    TIM1->CCER |= TIM_CCER_CC1E | TIM_CCER_CC2E;
+
+    // === Enable auto-reload preload, generate event ===
+    TIM1->CR1 |= TIM_CR1_ARPE;
+    TIM1->EGR |= TIM_EGR_UG;  // Force update
+
+    // === Main Output Enable (for advanced TIM1 only) ===
+    TIM1->BDTR |= TIM_BDTR_MOE;
+
+    // === Start Timer ===
+    TIM1->CR1 |= TIM_CR1_CEN;
+}
 
 
 // Post-process DMA buffer to get 24-bit audio data into signal_buf[]
