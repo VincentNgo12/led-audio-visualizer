@@ -36,6 +36,7 @@ void INMP441_Init(){
 
     // ===== SPI2 Configuration (slave mode) =====
     SPI2->CR1 &= ~SPI_CR1_MSTR;       // Slave mode
+    SPI2->CR1 |= SPI_CR1_RXONLY;      // Recieve only mode
     SPI2->CR1 |= SPI_CR1_DFF;         // 16-bit data frame (read 2 words per sample)
     SPI2->CR1 &= ~SPI_CR1_CPOL;       // Clock polarity (CPOL = 0)
     SPI2->CR1 &= ~SPI_CR1_CPHA;       // Clock phase    (CPHA = 0)
@@ -67,7 +68,7 @@ void INMP441_Init(){
     DMA1->IFCR |= DMA_IFCR_CTCIF4 | DMA_IFCR_CHTIF4 | DMA_IFCR_CTEIF4; //Clear DMA flag before enable IRQ
     NVIC_EnableIRQ(DMA1_Channel4_IRQn); // Enable interrupt in NVIC
 
-    TIM1_WS_SCK_Init(); // Initialize TIM1 for SCK and WS signals
+    TIMx_WS_SCK_Init(); // Initialize TIM1 for SCK and WS signals
 
     // ===== Enable SPI2 =====
     SPI2->CR1 |= SPI_CR1_SPE; // Enable SPI2
@@ -76,57 +77,57 @@ void INMP441_Init(){
 
 /*=====================================================================
 ***********************************************************************
-    This function is used to initialized TIM1 Channel 1 (PA8) and
-    Channel 2 (PA9). Channel 1 will generate SCK and Channel 2 will
+    This function is used to initialized TIM2 Channel 1 (PA0) and
+    TIM4 Channel 1 (PB6). TIM2 will generate SCK and TIM4 will
     generate WS for the INMP441 and SPI2 (slave mode)
 ***********************************************************************
 ======================================================================*/
-void TIM1_WS_SCK_Init(){
-    // === Enable Clocks ===
-    RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;    // Enable GPIOA
-    RCC->APB2ENR |= RCC_APB2ENR_AFIOEN;    // Enable AFIO
-    RCC->APB2ENR |= RCC_APB2ENR_TIM1EN;    // Enable TIM1
+void TIMx_WS_SCK_Init(){
+    // 1. Enable peripheral clocks
+    RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;   // Enable TIM2
+    RCC->APB1ENR |= RCC_APB1ENR_TIM4EN;   // Enable TIM4
+    RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;   // Enable GPIOA (for TIM2_CH1)
+    RCC->APB2ENR |= RCC_APB2ENR_IOPBEN;   // Enable GPIOB (for TIM4_CH1)
 
-    // === Configure PA8 (CH1 = SCK), PA9 (CH2 = WS) ===
-    GPIOA->CRH &= ~(GPIO_CRH_MODE8 | GPIO_CRH_CNF8 |
-                    GPIO_CRH_MODE9 | GPIO_CRH_CNF9);     // Clear configurations
+    // 2. Configure GPIOs for alternate function output push-pull
+    // TIM2_CH1 on PA0
+    GPIOA->CRL &= ~(GPIO_CRL_MODE0 | GPIO_CRL_CNF0);
+    GPIOA->CRL |=  (GPIO_CRL_MODE0_1 | GPIO_CRL_MODE0_0); // Output 50 MHz
+    GPIOA->CRL |=  (GPIO_CRL_CNF0_1);                     // AF Push-Pull
 
-    GPIOA->CRH |= (GPIO_CRH_MODE8_1 | GPIO_CRH_MODE8_0); // PA8 = Output 50 MHz
-    GPIOA->CRH |= GPIO_CRH_CNF8_1;                       // AF Push-Pull
+    // TIM4_CH1 on PB6
+    GPIOB->CRL &= ~(GPIO_CRL_MODE6 | GPIO_CRL_CNF6);
+    GPIOB->CRL |=  (GPIO_CRL_MODE6_1 | GPIO_CRL_MODE6_0); // Output 50 MHz
+    GPIOB->CRL |=  (GPIO_CRL_CNF6_1);                     // AF Push-Pull
 
-    GPIOA->CRH |= (GPIO_CRH_MODE9_1 | GPIO_CRH_MODE9_0); // PA9 = Output 50 MHz
-    GPIOA->CRH |= GPIO_CRH_CNF9_1;                       // AF Push-Pull
+    // 3. Disable timers before config
+    TIM2->CR1 = 0;
+    TIM4->CR1 = 0;
 
-    // === TIM1 Base Config ===
-    TIM1->PSC = 0;         // Prescaler = 0 → 72 MHz
-    TIM1->ARR = 25 - 1;    // Auto-reload → 72 MHz / 25 = 2.88 MHz (SCK freq)
+    // 4. TIM2: Setup for SCK 
+    TIM2->PSC = 0;               // No prescaler
+    TIM2->ARR = 25 - 1;              // Auto-reload 72MHz/25 = 2.88 MHz (SCK freq) 
+    TIM2->CCR1 = TIM2->ARR/2;             // 50% duty
+    TIM2->CCMR1 = (6 << 4);      // PWM mode 1 on CH1
+    TIM2->CCER = TIM_CCER_CC1E;  // Enable CH1 output
 
-    TIM1->RCR = 63;        // Repeat counter = 63 → update event every 64 pulses
 
-    // === CH1 = SCK: 50% duty PWM ===
-    TIM1->CCR1 = TIM1->ARR / 2; // 50% duty
-    TIM1->CCMR1 &= ~TIM_CCMR1_OC1M;
-    TIM1->CCMR1 |= (6 << TIM_CCMR1_OC1M_Pos); // PWM Mode 1
-    TIM1->CCMR1 |= TIM_CCMR1_OC1PE;           // Preload enable
+    TIM2->CR2 |= TIM_CR2_MMS_1;      // MMS = 010: TRGO on Update event
+    TIM4->SMCR = 0;
+    TIM4->SMCR |= TIM_SMCR_TS_0;     // TS = ITR1 (trigger input from TIM2)
 
-    // === CH2 = WS: Toggle every update event ===
-    TIM1->CCR2 = 1; // Ignored, since toggle mode
-    TIM1->CCMR1 &= ~TIM_CCMR1_OC2M;
-    TIM1->CCMR1 |= (3 << TIM_CCMR1_OC2M_Pos); // Force Toggle on match
-    TIM1->CCMR1 |= TIM_CCMR1_OC2PE;           // Preload enable
 
-    // === Enable Channels CH1 & CH2 ===
-    TIM1->CCER |= TIM_CCER_CC1E | TIM_CCER_CC2E;
-
-    // === Enable auto-reload preload, generate event ===
-    TIM1->CR1 |= TIM_CR1_ARPE;
-    TIM1->EGR |= TIM_EGR_UG;  // Force update
-
-    // === Main Output Enable (for advanced TIM1 only) ===
-    TIM1->BDTR |= TIM_BDTR_MOE;
-
-    // === Start Timer ===
-    TIM1->CR1 |= TIM_CR1_CEN;
+    // 5. TIM4: Drives WS 
+    TIM4->PSC = 0;
+    TIM4->ARR = 1500;       // 64 SCK cycles × 25 ticks/SCK = 1600 - 1
+    TIM4->CCR1 = TIM4->ARR/2;       // 50% duty
+    TIM4->CCMR1 = (6 << 4);      // PWM mode 1 on CH1
+    TIM4->CCER = TIM_CCER_CC1E;  // Enable CH1 output
+    
+    // 6. Enable counters
+    TIM2->CR1 |= TIM_CR1_CEN;
+    //for (volatile int i = 0; i < 100; ++i) __asm volatile("nop"); // Offset
+    TIM4->CR1 |= TIM_CR1_CEN;
 }
 
 
@@ -246,7 +247,6 @@ void ADC1_Init(){
     DMA1_Channel1->CCR |= DMA_CCR_HTIE;  // Half Transfer Interrupt
     NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 }
-
 
 
 //Process audio signal

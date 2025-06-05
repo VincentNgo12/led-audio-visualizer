@@ -248,3 +248,16 @@
 -The SCk and WS is decent, DMA1 Channel4 transfer data but sometimes stop due to signal misalignment.
 -SPI2->DR mostly contain garbage data.
 -I need to use an oscilloscope to test this...
+
+
+### Day 23
+-Tested with the oscilloscope, the SCK clock is good but there are problems with WS clock (PA9)
+-Appearantly there are some errors in the TIM1 Channel 2 configurations.
+-TIM1 CH2 toggle mode is not working, guess I will be using PWM mode 1 instead
+-Not working either, going to try to use TIM1 Update Interupt to manually toggle WS instead
+-Nothing is working, need to come up with another solution!!!!
+-Switched to using TIM2 CH1 for SCK and TIM4 CH1 as a slave which toggle at 64 SCK cycles for WS
+-TIM4 Channel 1 output high all the time, WS clock is always the problem!
+-TIM4 cant be in slave mode, gotta make it drive WS independently...
+-It is a very bad day today, total failure... It is not practical to use INMP441 with STM32F103...
+*** TODO: Swithcing to MAX9814...
