@@ -4,8 +4,10 @@
 #include "fft.h"
 #include "stdint.h"
 
+#if USE_INMP441 // (Define dma_buf only when INMP441 is used)
 volatile uint16_t dma_buf[DMA_BUF_LEN] __attribute__((aligned(4)));// Store raw INMP441 SPI2 readings (use two 16-bit slots per INMP441's 24-bit data)
-volatile uint16_t signal_buf[SIGNAL_BUF_LEN] __attribute__((aligned(4))); // Stores processed INMP441's signal
+#endif
+volatile uint16_t signal_buf[SIGNAL_BUF_LEN] __attribute__((aligned(4))); // Stores processed INMP441's or ADC signal
 volatile bool signal_buf_half_ready = false; //adc_buf[] half Interupt Flag
 volatile bool signal_buf_full_ready = false; //adc_buf[] full Interupt Flag
 
@@ -16,6 +18,7 @@ volatile bool signal_buf_full_ready = false; //adc_buf[] full Interupt Flag
     DMA1 Channel 4 in order to capture and store signal with INMP441
 ***********************************************************************
 ======================================================================*/
+#if USE_INMP441 // (These two functions are only defined when INMP441 is used)
 void INMP441_Init(){
     /*====================================
        Code to initialize SPI2 (Mimics I2S) 
@@ -95,11 +98,7 @@ void TIMx_WS_SCK_Init(){
     GPIOA->CRL |=  (GPIO_CRL_MODE0_1 | GPIO_CRL_MODE0_0); // Output 50 MHz
     GPIOA->CRL |=  (GPIO_CRL_CNF0_1);                     // AF Push-Pull
 
-    // TIM4_CH1 on PB6
-    GPIOB->CRL &= ~(GPIO_CRL_MODE6 | GPIO_CRL_CNF6);
-    GPIOB->CRL |=  (GPIO_CRL_MODE6_1 | GPIO_CRL_MODE6_0); // Output 50 MHz
-    GPIOB->CRL |=  (GPIO_CRL_CNF6_1);                     // AF Push-Pull
-
+    // TIM4_CH1 on PB6 GPIOB->CRL &= ~(GPIO_CRL_MODE6 | GPIO_CRL_CNF6); GPIOB->CRL |=  (GPIO_CRL_MODE6_1 | GPIO_CRL_MODE6_0); // Output 50 MHz GPIOB->CRL |=  (GPIO_CRL_CNF6_1);                     // AF Push-Pull
     // 3. Disable timers before config
     TIM2->CR1 = 0;
     TIM4->CR1 = 0;
@@ -146,14 +145,14 @@ void Process_DMA_Buffer(uint8_t half) {
         signal_buf[signal_index + i] = sample24 >> 8; // convert to int16_t
     }
 }
+#endif
 
 
 /*=====================================================================
 ***********************************************************************
     This function is used to initialized ADC1 Channel 0 (PA0) along with
     DMA1 Channel 1 in order to capture and store signal with MAX4466
-    module. Now I need to switch to using INMP441 but still I want to
-    keep these code in case for later uses.
+    or MAX9814 module.
 ***********************************************************************
 ======================================================================*/
 void ADC1_Init(){
@@ -251,7 +250,9 @@ void ADC1_Init(){
 
 //Process audio signal
 void Signal_Buf_Process(uint8_t half){
+    #if USE_INMP441
     Process_DMA_Buffer(half); // Process raw dma_buf[] data
+    #endif
 
     // Double signal_buf implementation: Process each half at a time.
     volatile uint16_t* buf_ptr = (half == 0) ? &signal_buf[0] : &signal_buf[SIGNAL_BUF_LEN / 2];

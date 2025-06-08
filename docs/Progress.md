@@ -261,3 +261,10 @@
 -TIM4 cant be in slave mode, gotta make it drive WS independently...
 -It is a very bad day today, total failure... It is not practical to use INMP441 with STM32F103...
 *** TODO: Swithcing to MAX9814...
+
+
+### Day 24
+-MAX9814 module just got delievered today.
+-I will factor the code a bit and then try it.
+-MAX9814 was not as impressive as I hope, but gotta check with oscilloscope to know for sure,
+-I spent too much time on this project already, better wrap it up quick.

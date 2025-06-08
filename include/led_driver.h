@@ -20,7 +20,7 @@ volatile bool pwm_ready;
 /*================================================
                 LED Strip Info
 ================================================*/
-#define NUM_LEDS 30 //Number of LEDs on strip
+#define NUM_LEDS 22 //Number of LEDs on strip
 #define NUM_BARS 4// Number of LED bars to visualize audio
 #define LEDS_PER_BAR ((int) NUM_LEDS / NUM_BARS)
 #define BINS_PER_BAR ((int) (FFT_SIZE / 2) / NUM_BARS)

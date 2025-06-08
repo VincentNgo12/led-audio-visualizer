@@ -20,7 +20,7 @@ int main(void)
 
     SysTick_Init(); //Initialize SysTick
     FFT_Init(); // Initialize FFT
-    INMP441_Init();
+    ADC1_Init();
     LED_Init();
 
     while (1)
