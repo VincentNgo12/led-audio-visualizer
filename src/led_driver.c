@@ -94,7 +94,8 @@ void Update_Led_Colors(void) {
         int end_bin = start_bin + BINS_PER_BAR;
 
         for (int i = start_bin; i < end_bin; i++) {
-            q15_t norm_val = Normalize_FFT_Value(fft_output[i], max_mag); // Get normalized magnitude
+            // q15_t norm_val = Normalize_FFT_Value(fft_output[i], max_mag); // Get normalized magnitude
+            q15_t norm_val = fft_output[i];
             magnitude += (norm_val < 0) ? -norm_val : norm_val; // Total normalized magnitude of current frequnency bins (Abs value)
         }
 
@@ -109,7 +110,7 @@ void Update_Led_Colors(void) {
             uint16_t index; // Led index of current bar
             // uint16_t index = led_idx_start + i;
             // ***Alternating vertical bars
-            if (bar % 2 == 0) {
+            if (bar % 2 == 1) {
                 // Even bar: bottom to top
                 index = led_idx_start + i; 
             } else {
@@ -136,6 +137,7 @@ void Update_Led_Colors(void) {
         } 
     }
 
+    hue_offset_q += HUE_OFFSET_RATE; // Change hue over time
     if (led_idx == NUM_LEDS) return; // Return if all LEDs are updated
 
     // Turn off unused LEDs
@@ -144,8 +146,6 @@ void Update_Led_Colors(void) {
         led_colors[i][1] = 0x00; // Red
         led_colors[i][2] = 0x00; // Blue
     }    
-
-    hue_offset_q += HUE_OFFSET_RATE; // Change hue over time
 }
 
 
@@ -179,7 +179,8 @@ uint8_t Magnitude_To_Brightness_q15(q15_t mag_q15, q15_t max_mag) {
     if (max_mag == 0) return 0; // avoid divide by 0
     uint16_t abs_mag = (mag_q15 < 0) ? -mag_q15 : mag_q15; // abs_mag: 0.0 to 1.0
     uint32_t scaled = ((uint32_t)abs_mag << 15) / max_mag;  // Now scaled from 0 to 32767
-    uint8_t index = (scaled * (LUT_SIZE - 1)) >> 15;  // scale 0 to LUT_SIZE
+    uint32_t index = (scaled * (LUT_SIZE)) >> 15;  // scale 0 to LUT_SIZE
+    if (index >= LUT_SIZE) index = LUT_SIZE - 1;
     return log_lut[index]; // Return the associated brightness (from Look-up table) }
 }
 

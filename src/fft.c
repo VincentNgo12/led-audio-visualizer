@@ -24,7 +24,7 @@ void FFT_Process(const volatile uint16_t *signal_buf, uint8_t use_INMP441) {
         // Step 1 (for MAX4466): Convert ADC data to Q15 format (centered around zero)
         for (int i = 0; i < FFT_SIZE; i++) {
             int16_t centered = ((int16_t)signal_buf[i]) - ADC_OFFSET; // 12-bit centered
-            fft_input[2 * i]     = (q15_t)((int32_t)centered * 16);   // Q15 scaling
+            fft_input[2 * i]     = (q15_t)((int32_t)centered * 8);   // Q15 scaling
             fft_input[2 * i + 1] = 0;                        // Every Imag part = 0
         }
     }

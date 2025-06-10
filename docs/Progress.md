@@ -268,3 +268,18 @@
 -I will factor the code a bit and then try it.
 -MAX9814 was not as impressive as I hope, but gotta check with oscilloscope to know for sure,
 -I spent too much time on this project already, better wrap it up quick.
+
+
+### Day 25
+-Firt time tested the LED board
+-Led leds was dancing crazily at first
+-Color Hue doesn't seem to be changing now, weird
+-Fixed the minor issue
+-I worry the data line wasn't soldered correectly...
+-The leds in the higher end never lights up...
+-Right, only 2 bars are working now... Need to resolder the third bar DIN
+-After some painful soldering, all leds seems to work now...
+-The data is too long and therfore very unstable. I'm going to try the 5V logic buffer to see if it improves...
+-Its a very tired day today...
+-I tried to fix the led board at night, turn out the data line to the very first LED was LOOSE!
+-When the whole LED board lights up I was so happy, now I just need to fine tune some setting to get the effects I am satisfied with!
