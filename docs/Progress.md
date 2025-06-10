@@ -283,3 +283,12 @@
 -Its a very tired day today...
 -I tried to fix the led board at night, turn out the data line to the very first LED was LOOSE!
 -When the whole LED board lights up I was so happy, now I just need to fine tune some setting to get the effects I am satisfied with!
+
+
+### Day 26
+*** TODO: +Add magnitude threshold.
+          +Logarithmic Frequency Bins Mapping
+-Generate bar_to_bin[] to used for logarithmic frequency bins mapping for 30 LEDs bars
+-Generate custom EQ gains for the frequency bins
+-Added magnitude threshold
+*** TODO: Make log_lut even more reactive

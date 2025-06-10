@@ -2,6 +2,7 @@
 #define LOG_LUT_H
 
 #include <stdint.h>
+#include "arm_math.h"
 
 /*================================================
                 Look-up Table for Log()
@@ -29,5 +30,23 @@ static const uint8_t log_lut[LUT_SIZE] = {
 253, 253, 253, 253, 254, 254, 254, 254, 254, 254, 254, 255, 255, 255, 255 
 };
 
+
+// Logarithmic Frequncy bins mapping (For 30 bars of LEDs only)
+static const uint16_t bar_to_bin[31] = {
+  1, 1, 1, 2, 2, 3, 3, 4, 
+  4, 5, 6, 8, 9, 11, 13, 16, 
+  19, 23, 28, 34, 40, 49, 58, 70, 
+  84, 102, 122, 147, 177, 213, 256
+};
+
+
+// Custom gains for each frequency bins (for 30 LEDs bars)
+// Gain in range [0, 255], where 128 ≈ 1.0x gain (base 128)
+const uint8_t eq_gain[NUM_BARS] = {
+    140, 140, 140, 140, 145, 150, 155, 160,
+    165, 170, 175, 180, 185, 190, 195, 200,
+    205, 210, 215, 220, 225, 230, 220, 220,
+    220, 220, 220, 220, 220, 220
+};
 
 #endif // LOG_LUT_H

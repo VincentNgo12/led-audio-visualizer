@@ -90,8 +90,11 @@ void Update_Led_Colors(void) {
     // Calculate the brightness of each LED bar with associated frequency bins
     for (uint8_t bar = 0; bar < NUM_BARS; bar++) {
         int32_t magnitude = 0; // Uses int32_t to avoid overflow during q15 calculations
-        int start_bin = 1 + bar * BINS_PER_BAR;
-        int end_bin = start_bin + BINS_PER_BAR;
+        // int start_bin = 1 + bar * BINS_PER_BAR;
+        // int end_bin = start_bin + BINS_PER_BAR;
+
+        int start_bin = bar_to_bin[bar];
+        int end_bin   = bar_to_bin[bar + 1];
 
         for (int i = start_bin; i < end_bin; i++) {
             // q15_t norm_val = Normalize_FFT_Value(fft_output[i], max_mag); // Get normalized magnitude
@@ -100,6 +103,12 @@ void Update_Led_Colors(void) {
         }
 
         q15_t avg_magnitude = (q15_t)(magnitude / BINS_PER_BAR);  // Average magnitude (back to Q15)
+        // Scale factor: 128 = 1.0x gain, so shift back by 7
+        int32_t boosted = ((int32_t)avg_magnitude * eq_gain[bar]) >> 7;
+        if (boosted > max_mag) boosted = max_mag;
+        avg_magnitude = (q15_t)boosted; // Cast back to q15_t
+        if (avg_magnitude < 500) avg_magnitude = 0;
+
         uint8_t brightness = Magnitude_To_Brightness_q15(avg_magnitude, max_mag); // Brightness based on magnitude
         brightness = Set_Bar_Levels(brightness, bar); // Brightness after updated LED bar levels
         uint16_t bar_height = Get_Bar_Height(brightness); // Bar height based on brightness
