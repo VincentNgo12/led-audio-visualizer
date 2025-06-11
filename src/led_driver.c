@@ -107,7 +107,6 @@ void Update_Led_Colors(void) {
         int32_t boosted = ((int32_t)avg_magnitude * eq_gain[bar]) >> 7;
         if (boosted > max_mag) boosted = max_mag;
         avg_magnitude = (q15_t)boosted; // Cast back to q15_t
-        if (avg_magnitude < 500) avg_magnitude = 0;
 
         uint8_t brightness = Magnitude_To_Brightness_q15(avg_magnitude, max_mag); // Brightness based on magnitude
         brightness = Set_Bar_Levels(brightness, bar); // Brightness after updated LED bar levels
@@ -214,12 +213,19 @@ uint8_t Set_Bar_Levels(uint8_t new_brightness, uint8_t bar_idx) {
 
 // Get Bar height based on brightness
 uint16_t Get_Bar_Height(uint8_t brightness) {
-    if (brightness == 0) return 0;
+    // if (brightness == 0) return 0;
 
-    uint16_t brightness_biased = brightness + 0; // Add some bias value to the brightness
-    uint16_t height = (brightness_biased * LEDS_PER_BAR) / (LED_MAX_BRIGHTNESS);
+    // uint16_t brightness_biased = brightness + 0; // Add some bias value to the brightness
+    // uint16_t height = (brightness_biased * LEDS_PER_BAR) / (LED_MAX_BRIGHTNESS);
 
-    return height;
+    // return height;
+
+    // For 5 LEDs per bar
+    static const uint8_t thresholds[LEDS_PER_BAR] = { 90, 100, 110, 130, 150 };
+    for (int i = LEDS_PER_BAR - 1; i >= 0; i--) {
+        if (brightness >= thresholds[i]) return i + 1;
+    }
+    return 0;
 }
 
 

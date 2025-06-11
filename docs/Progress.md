@@ -292,3 +292,10 @@
 -Generate custom EQ gains for the frequency bins
 -Added magnitude threshold
 *** TODO: Make log_lut even more reactive
+
+
+### Day 27
+-The very first LED maybe have a loose conducting surface, the dataline only become stable if I press both sides of the first LED.
+-Tried to customize the log_lut[] array
+-Ended up reimplemeting the Get_Bar_Height() to determine bar height with custom threshold.
+-Reduced brightness decay rate a bit

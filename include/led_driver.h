@@ -25,7 +25,7 @@ volatile bool pwm_ready;
 #define LEDS_PER_BAR ((int) NUM_LEDS / NUM_BARS)
 #define BINS_PER_BAR ((int) (FFT_SIZE / 2) / NUM_BARS)
 #define DECAY_SHIFT         4   // Decay in 1/16 steps
-#define BRIGHTNESS_DECAY_Q  30                  // Decay by 1/16 per frame
+#define BRIGHTNESS_DECAY_Q  15
 #define HUE_OFFSET_RATE 2
 extern uint8_t led_colors[NUM_LEDS][3]; //RGB values for each LED
 uint16_t led_bar_levels_q[NUM_BARS]; // Current sound level for each LED bars (will decay over time)
