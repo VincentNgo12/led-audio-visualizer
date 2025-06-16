@@ -299,3 +299,9 @@
 -Tried to customize the log_lut[] array
 -Ended up reimplemeting the Get_Bar_Height() to determine bar height with custom threshold.
 -Reduced brightness decay rate a bit
+
+
+### Day 28 (June 16 2025)
+-I replaced the very first (faulty) LED and the board now works perfectly.
+-Not ass impressive as I imagined but I can safely call this a good result for this project.
+-I guess this is the last major work on this projec. I will wrap this up and move on to other projects.
